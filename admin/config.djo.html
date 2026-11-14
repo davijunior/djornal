@@ -1,0 +1,40 @@
+{% abrir: %}
+{% exigir_admin: %}
+{% var eu = usuario_atual: %}
+{% if{ cond[Http.method: == "POST"] %}
+  {% exigir_csrf: %}
+  {% if{ cond[(Http.form:"acao" ?? "") == "senha"] %}
+    {% var u = Db.one:"SELECT * FROM usuarios WHERE id = ?":[eu["id"]] %}
+    {% var nova = Http.form:"nova" ?? "" %}
+    {% if{ cond[not (Hash.verify:(Http.form:"atual" ?? ""):(u["senha"]))] %}{% avisar:"A senha atual não confere." %}
+    {% } elif{ cond[len:nova < 8] %}{% avisar:"A nova senha precisa de 8+ caracteres." %}
+    {% } else{ %}
+      {% Db.exec:"UPDATE usuarios SET senha = ? WHERE id = ?":[Hash.password:nova, eu["id"]] %}
+      {% avisar:"Senha alterada." %}
+    {% } %}
+  {% } else{ %}
+    {% for{ each[k in ["titulo", "slogan", "descricao", "rodape", "url"]] %}{% definir_config:k:(trim:(Http.form:k ?? "")) %}{% } %}
+    {% avisar:"Configurações salvas." %}
+  {% } %}
+  {% Http.redirect:"/admin/config" %}
+{% } %}
+{% var adm_titulo = "Configurações" %}
+{% include:"admin/_topo.djo.html" %}
+<h1>Configurações</h1>
+<form method="post" class="lateral">
+  <input type="hidden" name="_token" value="{{ Session.token: }}">
+  <label>Nome do site <input name="titulo" value="{{ cfg["titulo"] }}" required></label>
+  <label>Slogan <input name="slogan" value="{{ cfg["slogan"] }}"></label>
+  <label>Descrição (SEO) <textarea name="descricao" rows="3">{{ cfg["descricao"] }}</textarea></label>
+  <label>Rodapé <input name="rodape" value="{{ cfg["rodape"] }}"></label>
+  <label>Endereço público (usado em links, feed e sitemap) <input name="url" value="{{ cfg["url"] }}" placeholder="https://meusite.com"></label>
+  <button class="btn">Salvar</button>
+</form>
+<h2>Trocar senha</h2>
+<form method="post" class="lateral">
+  <input type="hidden" name="_token" value="{{ Session.token: }}"><input type="hidden" name="acao" value="senha">
+  <label>Senha atual <input name="atual" type="password" required autocomplete="current-password"></label>
+  <label>Nova senha <input name="nova" type="password" required autocomplete="new-password"></label>
+  <button class="btn">Trocar</button>
+</form>
+{% include:"admin/_rodape.djo.html" %}

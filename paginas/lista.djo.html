@@ -1,0 +1,23 @@
+{% abrir: %}
+{% if{ cond[not (instalado:)] %}{% Http.redirect:"/instalar" %}{% } %}
+{% var r = lista_publica:false:false %}
+{% var pag_titulo = r["titulo"] %}
+{% var pag_desc = "" %}
+{% include:"paginas/_topo.djo.html" %}
+{% if{ cond[r["titulo"] != ""] %}<h1>{{ r["titulo"] }}{% if{ cond[r["q"] != ""] %}: {{ r["q"] }}{% } %}</h1>{% } else{ %}<p class="slogan">{{ cfg["slogan"] }}</p>{% } %}
+{% for{ each[c in r["itens"]] %}
+<article class="cartao">
+  <h2><a href="{{ caminho_de:c.tipo:c.slug }}">{{ c.titulo }}</a></h2>
+  <p class="meta">{{ data_br:(ler_data:c.publicar_em) }}{% for{ each[t in c.tags] %} · <a href="/tag/{{ slug:t }}">#{{ t }}</a>{% } %}</p>
+  <p>{{ c.resumo }}</p>
+</article>
+{% } %}
+{% if{ cond[r["total"] == 0] %}<p>Nada por aqui ainda.</p>{% } %}
+{% if{ cond[r["paginas"] > 1] %}
+<p class="paginas">
+  {% if{ cond[r["pagina"] > 1] %}<a href="?pagina={{ r["pagina"] - 1 }}&q={{ urlencode:(r["q"]) }}">← Mais novos</a>{% } %}
+  Página {{ r["pagina"] }} de {{ r["paginas"] }}
+  {% if{ cond[r["pagina"] < r["paginas"]] %}<a href="?pagina={{ r["pagina"] + 1 }}&q={{ urlencode:(r["q"]) }}">Mais antigos →</a>{% } %}
+</p>
+{% } %}
+{% include:"paginas/_rodape.djo.html" %}

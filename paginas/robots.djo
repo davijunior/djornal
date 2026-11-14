@@ -1,0 +1,9 @@
+Http.setheader:"Content-Type":"text/plain; charset=utf-8"
+abrir:
+var base = base_url:
+print "User-agent: *"
+print "Allow: /"
+print "Disallow: /admin"
+print ""
+print "Sitemap: " + base + "/sitemap.xml"
+print "# Para agentes de IA: " + base + "/.well-known/ai-manifest.json"

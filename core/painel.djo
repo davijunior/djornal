@@ -1,0 +1,20 @@
+// Ajudas do painel (mensagens que sobrevivem a um redirect)
+
+f avisar
+    params[msg[String]]
+    Session.set:"aviso":msg
+
+f pegar_aviso
+    var m = Session.get:"aviso"
+    Session.del:"aviso"
+    return m
+
+f lista_de_tags
+    params[texto[String]]
+    var l = []
+    for{ each[t in split:texto:","] if{ cond[trim:t != ""] push:l:(trim:t) } }
+    return l
+
+f texto_boas_vindas
+    params[base[String]]
+    return "Seu site está no ar. Este post foi criado pelo instalador: edite ou apague em **Painel → Conteúdos**.\n\n## Para pessoas\n\nEscreva em Markdown no [painel](/admin). Rascunhos só aparecem para quem está logado.\n\n## Para agentes de IA\n\n- Peça qualquer página com `Accept: application/json` e receba o conteúdo em JSON, com o texto em Markdown\n- Escrever: API REST descrita em `/.well-known/ai-manifest.json`\n- Autenticação: `Authorization: Bearer <token>` (crie em **Painel → Tokens**)\n"

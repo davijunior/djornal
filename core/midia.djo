@@ -1,0 +1,28 @@
+// Mídia: o arquivo vai para uploads/AAAA-MM/ com nome aleatório. Só extensões seguras (a djo recusa html, svg, js, djo).
+
+f extensoes_aceitas
+    return ["jpg", "jpeg", "png", "gif", "webp", "avif", "ico", "pdf", "txt", "csv", "json", "md", "zip", "gz", "mp3", "wav", "ogg", "mp4", "webm"]
+
+// grava o upload do campo 'campo' do formulário. Devolve {"midia": linha} ou {"erro"}
+f guardar_upload
+    params[campo[String], titulo[String], alt[String], autor_id[Int]]
+    var arq = Http.file:campo
+    if{ cond[arq == nil] return {"erro": "envie o arquivo no campo '" + campo + "' (multipart/form-data)", "status": 422} }
+    var partes = split:(lower:(arq["name"])):"."
+    var ext = partes[(len:partes) - 1]
+    if{ cond[(len:partes < 2) or (not (contains:(extensoes_aceitas:):ext))]
+        return {"erro": "arquivo não aceito (." + ext + "). Aceitos: " + (join:(extensoes_aceitas:):", "), "status": 415}
+    }
+    var ts = agora:
+    var pasta = "uploads/" + (Time.format:ts:"YYYY-MM")
+    var caminho = Http.upload:campo:pasta
+    if{ cond[caminho == nil] return {"erro": "arquivo não aceito", "status": 415} }
+    var nome = titulo
+    if{ cond[nome == ""] nome = arq["name"] }
+    var r = Db.exec:"INSERT INTO midias (arquivo, titulo, alt, autor_id, criado) VALUES (?, ?, ?, ?, ?)":[caminho, nome, alt, autor_id, agora:]
+    return {"midia": Db.one:"SELECT * FROM midias WHERE id = ?":[r["last_id"]]}
+
+f midia_json
+    params[m, base[String]]
+    var url = base + "/" + m["arquivo"]
+    return {"id": m["id"], "titulo": m["titulo"], "alt": m["alt"], "url": url, "markdown": "![" + (m["alt"] ?? "") + "](/" + m["arquivo"] + ")", "criado": iso:(m["criado"])}

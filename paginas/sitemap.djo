@@ -1,0 +1,11 @@
+abrir:
+var base = base_url:
+Http.setheader:"Content-Type":"application/xml; charset=utf-8"
+print "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+print "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
+print "<url><loc>" + base + "/</loc></url><url><loc>" + base + "/blog</loc></url>"
+var r = consulta:"":"":"":"":false:1:50000:false
+for{ each[c in r["itens"]]
+    print "<url><loc>" + (xml:c.url) + "</loc><lastmod>" + (slice:c.atualizado:0:10) + "</lastmod></url>"
+}
+print "</urlset>"

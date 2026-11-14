@@ -1,0 +1,47 @@
+// Só existe o que está declarado aqui. O resto da pasta é código interno.
+// Cada endereço público tem duas faces: tela (HTML) e agente (JSON, quando o pedido manda Accept: application/json).
+
+// ---- site público (cache de 10 s só para quem não manda Cookie nem Authorization)
+Route.get:"/":{"html": "paginas/lista.djo.html", "agent": "agentes/site.djo", "about": "Agente: título, endereço e contagens do site", "returns": "Map", "cache": 10}
+Route.get:"/blog":{"html": "paginas/lista.djo.html", "agent": "agentes/lista.djo", "about": "Lista conteúdos. Sem token só o publicado; com token também rascunhos. Filtros: tipo (post|page), status, tag, q, pagina, por, texto=1 (traz o corpo)", "returns": ["Conteudo"], "cache": 10}
+Route.get:"/blog/{slug}":{"html": "paginas/conteudo.djo.html", "agent": "agentes/conteudo.djo", "about": "Um post, com o texto em Markdown. Com token, também rascunhos (slug ou id)", "returns": "Conteudo", "cache": 10}
+Route.get:"/tag/{slug}":{"html": "paginas/lista.djo.html", "agent": "agentes/lista.djo", "about": "Posts de uma tag", "returns": ["Conteudo"], "cache": 10}
+Route.get:"/busca":{"html": "paginas/lista.djo.html", "agent": "agentes/lista.djo", "about": "Busca por ?q= em posts e páginas", "returns": ["Conteudo"]}
+Route.get:"/{slug}":{"html": "paginas/conteudo.djo.html", "agent": "agentes/conteudo.djo", "about": "Uma página, com o texto em Markdown. Com token, também rascunhos (slug ou id)", "returns": "Conteudo", "cache": 10}
+Route.get:"/feed.xml":"paginas/feed.djo"
+Route.get:"/sitemap.xml":"paginas/sitemap.djo"
+Route.get:"/robots.txt":"paginas/robots.djo"
+Route.static:"/assets":"publico"
+Route.static:"/uploads":"uploads"
+
+// ---- escrita para agentes: actions (o manifesto em /.well-known/ai-manifest.json é gerado daqui)
+Route.action:"/api/conteudo":"criar_conteudo":"Conteudo"
+Route.action:"/api/conteudo/{id}/editar":"editar_conteudo":"Conteudo"
+Route.action:"/api/conteudo/{id}/alterar":"alterar_conteudo":"Conteudo"
+Route.action:"/api/conteudo/{id}/publicar":"publicar_conteudo":"Conteudo"
+Route.action:"/api/conteudo/{id}/despublicar":"despublicar_conteudo":"Conteudo"
+Route.action:"/api/conteudo/{id}/apagar":"apagar_conteudo"
+Route.action:"/api/site":"configurar_site":"Map"
+Route.get:"/api/midia":{"agent": "agentes/api_midia.djo", "about": "Lista os arquivos enviados (exige token)", "returns": ["Map"]}
+Route.post:"/api/midia":"paginas/api_midia_envio.djo"
+
+// ---- painel e instalação (formulários protegidos por CSRF e sessão)
+Route.get:"/instalar":"admin/instalar.djo.html"
+Route.post:"/instalar":"admin/instalar.djo.html"
+Route.get:"/entrar":"admin/entrar.djo.html"
+Route.post:"/entrar":"admin/entrar.djo.html"
+Route.get:"/sair":"admin/sair.djo"
+Route.get:"/admin":"admin/painel.djo.html"
+Route.get:"/admin/conteudos":"admin/conteudos.djo.html"
+Route.get:"/admin/conteudos/novo":"admin/editar.djo.html"
+Route.post:"/admin/conteudos/novo":"admin/editar.djo.html"
+Route.get:"/admin/conteudos/{id}":"admin/editar.djo.html"
+Route.post:"/admin/conteudos/{id}":"admin/editar.djo.html"
+Route.post:"/admin/conteudos/{id}/apagar":"admin/apagar.djo"
+Route.post:"/admin/previa":"admin/previa.djo"
+Route.get:"/admin/midia":"admin/midia.djo.html"
+Route.post:"/admin/midia":"admin/midia.djo.html"
+Route.get:"/admin/tokens":"admin/tokens.djo.html"
+Route.post:"/admin/tokens":"admin/tokens.djo.html"
+Route.get:"/admin/config":"admin/config.djo.html"
+Route.post:"/admin/config":"admin/config.djo.html"

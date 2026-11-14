@@ -1,0 +1,158 @@
+// Superfície para agentes. Cada action vira POST + entrada no manifesto
+// (/.well-known/ai-manifest.json) com JSON Schema gerado dos tipos abaixo.
+// As actions só autenticam e traduzem: a regra está em conteudo.djo.
+
+f campos_aceitos
+    return ["titulo", "texto", "slug", "resumo", "tipo", "status", "tags", "publicar_em", "em_menu"]
+
+// Map (JSON livre) -> Entrada, conferindo os tipos. Devolve {"entrada": e} ou {"erro", "status"}
+f entrada_de
+    params[m[Map]]
+    for{ each[k in keys:m]
+        if{ cond[not (contains:(campos_aceitos:):k)]
+            return {"erro": "campo desconhecido '" + k + "'. Campos aceitos: " + (join:(campos_aceitos:):", "), "status": 422}
+        }
+    }
+    var e = Entrada:.
+    e.titulo = m["titulo"] ?? ""
+    for{ each[k in ["texto", "slug", "resumo", "tipo", "status", "publicar_em"]]
+        if{ cond[has:m:k]
+            if{ cond[not (is:(m[k]):"String")] return erro_campo:k:"deve ser texto":422 }
+        }
+    }
+    if{ cond[has:m:"titulo"]
+        if{ cond[not (is:(m["titulo"]):"String")] return erro_campo:"titulo":"deve ser texto":422 }
+    }
+    if{ cond[has:m:"tags"]
+        if{ cond[not (is:(m["tags"]):"Arr")] return erro_campo:"tags":"deve ser uma lista de textos":422 }
+        e.tags = m["tags"]
+    }
+    if{ cond[has:m:"em_menu"]
+        if{ cond[not (is:(m["em_menu"]):"Bool")] return erro_campo:"em_menu":"deve ser true ou false":422 }
+        e.em_menu = m["em_menu"]
+    }
+    if{ cond[has:m:"texto"] e.texto = m["texto"] }
+    if{ cond[has:m:"slug"] e.slug = m["slug"] }
+    if{ cond[has:m:"resumo"] e.resumo = m["resumo"] }
+    if{ cond[has:m:"tipo"] e.tipo = m["tipo"] }
+    if{ cond[has:m:"status"] e.status = m["status"] }
+    if{ cond[has:m:"publicar_em"] e.publicar_em = m["publicar_em"] }
+    return {"entrada": e}
+
+// edição parcial: só muda o que veio em 'campos'
+f alterar_parcial
+    params[id[Int], campos[Map], autor_id[Int]]
+    var r = Db.one:"SELECT * FROM conteudos WHERE id = ?":[id]
+    if{ cond[r == nil] return {"erro": "conteúdo " + (str:id) + " não existe", "status": 404} }
+    var v = entrada_de:campos
+    if{ cond[has:v:"erro"] return v }
+    var e = Entrada:.
+    e.titulo = r["titulo"]
+    e.texto = r["texto"]
+    e.slug = r["slug"]
+    e.resumo = r["resumo"]
+    e.tipo = r["tipo"]
+    e.status = r["status"]
+    e.tags = nomes_tags:id
+    e.em_menu = r["em_menu"] == 1
+    var n = v["entrada"]
+    for{ each[k in keys:campos]
+        if{ cond[k == "titulo"] e.titulo = n.titulo }
+        if{ cond[k == "texto"] e.texto = n.texto }
+        if{ cond[k == "slug"] e.slug = n.slug }
+        if{ cond[k == "resumo"] e.resumo = n.resumo }
+        if{ cond[k == "tipo"] e.tipo = n.tipo }
+        if{ cond[k == "status"] e.status = n.status }
+        if{ cond[k == "tags"] e.tags = n.tags }
+        if{ cond[k == "em_menu"] e.em_menu = n.em_menu }
+        if{ cond[k == "publicar_em"] e.publicar_em = n.publicar_em }
+    }
+    // mudou o texto sem mexer no resumo: gera outro resumo
+    if{ cond[(has:campos:"texto") and (not (has:campos:"resumo"))] e.resumo = "" }
+    return salvar_conteudo:e:autor_id:id
+
+// {"conteudo": c} -> c ; {"erro", "status"} -> define o status HTTP e devolve o erro
+f resposta
+    params[r[Map], ok[Int]]
+    if{ cond[has:r:"erro"]
+        Http.status:(r["status"] ?? 400)
+        return {"erro": r["erro"], "campo": r["campo"]}
+    }
+    Http.status:ok
+    if{ cond[has:r:"conteudo"] return r["conteudo"] }
+    return r
+
+f resumo_do_site
+    var s = site:
+    var base = base_url:
+    return {"titulo": s["titulo"], "slogan": s["slogan"], "descricao": s["descricao"], "rodape": s["rodape"], "url": base,
+            "publicados": (Db.one:"SELECT COUNT(*) AS n FROM conteudos WHERE tipo = 'post' AND status = 'published' AND publicar_em <= ?":[agora:])["n"],
+            "paginas": (Db.one:"SELECT COUNT(*) AS n FROM conteudos WHERE tipo = 'page' AND status = 'published'")["n"],
+            "rascunhos": (Db.one:"SELECT COUNT(*) AS n FROM conteudos WHERE status = 'draft'")["n"]}
+
+f aplicar_ajustes
+    params[a[Ajustes]]
+    if{ cond[a.titulo != ""] definir_config:"titulo":a.titulo }
+    if{ cond[a.slogan != ""] definir_config:"slogan":a.slogan }
+    if{ cond[a.descricao != ""] definir_config:"descricao":a.descricao }
+    if{ cond[a.rodape != ""] definir_config:"rodape":a.rodape }
+    if{ cond[a.url != ""] definir_config:"url":(trim:a.url) }
+    return resumo_do_site:
+
+// ---------------------------------------------------------------- actions
+
+action criar_conteudo
+    "Cria um post ou uma página. Só 'titulo' é obrigatório. 'texto' é Markdown (HTML cru é escapado). Nasce como rascunho (status 'draft'); use status 'published' para publicar já, ou 'publicar_em' (UTC, AAAA-MM-DD HH:mm) com status 'published' para agendar. 'tipo' é 'post' ou 'page'. O endereço (slug) sai do título se você não enviar. Devolve o conteúdo criado, com 'url'."
+    params[conteudo[Entrada]]
+    abrir:
+    var g = guarda_escrita:
+    if{ cond[has:g:"erro"] return g }
+    return resposta:(salvar_conteudo:conteudo:(g["token"]["usuario_id"]):0):201
+
+action editar_conteudo
+    "Substitui um conteúdo por inteiro: o que você não enviar volta ao padrão (texto vazio, sem tags, rascunho...). Para mudar só alguns campos use alterar_conteudo."
+    params[id[Int], conteudo[Entrada]]
+    abrir:
+    var g = guarda_escrita:
+    if{ cond[has:g:"erro"] return g }
+    return resposta:(salvar_conteudo:conteudo:(g["token"]["usuario_id"]):id):200
+
+action alterar_conteudo
+    "Altera só os campos enviados em 'campos' e preserva o resto. Campos aceitos: titulo, texto, slug, resumo, tipo, status, tags, publicar_em, em_menu. Exemplo: {\"campos\": {\"texto\": \"novo corpo em Markdown\", \"tags\": [\"ia\"]}}. Use para revisar um texto sem reenviar tudo."
+    params[id[Int], campos[Map]]
+    abrir:
+    var g = guarda_escrita:
+    if{ cond[has:g:"erro"] return g }
+    return resposta:(alterar_parcial:id:campos:(g["token"]["usuario_id"])):200
+
+action publicar_conteudo
+    "Publica um conteúdo agora (ou na data de 'publicar_em', se ela estiver no futuro)."
+    params[id[Int]]
+    abrir:
+    var g = guarda_escrita:
+    if{ cond[has:g:"erro"] return g }
+    return resposta:(mudar_status:id:"published"):200
+
+action despublicar_conteudo
+    "Volta o conteúdo para rascunho (sai do ar, mas não é apagado)."
+    params[id[Int]]
+    abrir:
+    var g = guarda_escrita:
+    if{ cond[has:g:"erro"] return g }
+    return resposta:(mudar_status:id:"draft"):200
+
+action apagar_conteudo
+    "Apaga o conteúdo de vez. Não dá para desfazer; prefira despublicar_conteudo se tiver dúvida."
+    params[id[Int]]
+    abrir:
+    var g = guarda_escrita:
+    if{ cond[has:g:"erro"] return g }
+    return resposta:(apagar_por_id:id):200
+
+action configurar_site
+    "Altera as configurações do site. Só os campos enviados (não vazios) mudam: titulo, slogan, descricao, rodape, url (endereço público, usado em links e feeds)."
+    params[ajustes[Ajustes]]
+    abrir:
+    var g = guarda_escrita:
+    if{ cond[has:g:"erro"] return g }
+    return aplicar_ajustes:ajustes

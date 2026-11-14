@@ -1,0 +1,5 @@
+_dados/
+uploads/2*/
+dist/
+*.d/
+.env

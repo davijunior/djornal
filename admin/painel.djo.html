@@ -1,0 +1,26 @@
+{% abrir: %}
+{% exigir_admin: %}
+{% var adm_titulo = "Início" %}
+{% var s = resumo_do_site: %}
+{% var recentes = (consulta:"":"":"":"":true:1:5:false)["itens"] %}
+{% include:"admin/_topo.djo.html" %}
+<h1>Início</h1>
+<div class="grade">
+  <div class="num"><b>{{ s["publicados"] }}</b> posts publicados</div>
+  <div class="num"><b>{{ s["paginas"] }}</b> páginas</div>
+  <div class="num"><b>{{ s["rascunhos"] }}</b> rascunhos</div>
+</div>
+<p><a class="btn" href="/admin/conteudos/novo">Novo conteúdo</a></p>
+<h2>Últimas edições</h2>
+<table class="tab">
+{% for{ each[c in recentes] %}
+  <tr><td><a href="/admin/conteudos/{{ c.id }}">{{ c.titulo }}</a></td><td>{{ c.tipo }}</td><td><span class="selo">{{ c.status }}</span></td><td>{{ c.atualizado }}</td></tr>
+{% } %}
+</table>
+<h2>Conectar um agente de IA</h2>
+<ul>
+  <li>Manifesto da API de escrita (JSON Schema): <a href="/.well-known/ai-manifest.json">/.well-known/ai-manifest.json</a></li>
+  <li>Ler: qualquer página com <code>Accept: application/json</code>, ex.: <code>curl -H "Accept: application/json" {{ s["url"] }}/blog</code></li>
+  <li>Token: em <a href="/admin/tokens">Tokens</a>. Envie como <code>Authorization: Bearer cms_…</code></li>
+</ul>
+{% include:"admin/_rodape.djo.html" %}

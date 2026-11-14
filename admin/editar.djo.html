@@ -1,0 +1,67 @@
+{% abrir: %}
+{% exigir_admin: %}
+{% var id = int:(param:"id" ?? "") ?? 0 %}
+{% var atual = nil %}
+{% if{ cond[id > 0] %}{% atual = obter:(str:id):"":true:true %}{% if{ cond[atual == nil] %}{% Http.status:404 %}{% include:"404.djo.html" %}{% return %}{% } %}{% } %}
+{% var v = {"titulo": "", "texto": "", "slug": "", "resumo": "", "tipo": "post", "status": "draft", "tags": "", "publicar_em": "", "em_menu": false} %}
+{% if{ cond[atual != nil] %}
+  {% v = {"titulo": atual.titulo, "texto": atual.texto, "slug": atual.slug, "resumo": atual.resumo, "tipo": atual.tipo, "status": atual.status, "tags": join:atual.tags:", ", "publicar_em": atual.publicar_em, "em_menu": atual.em_menu} %}
+{% } %}
+{% var erro = "" %}
+{% if{ cond[Http.method: == "POST"] %}
+  {% exigir_csrf: %}
+  {% for{ each[k in ["titulo", "texto", "slug", "resumo", "tipo", "status", "tags", "publicar_em"]] %}{% v[k] = Http.form:k ?? "" %}{% } %}
+  {% v["em_menu"] = (Http.form:"em_menu" ?? "") == "on" %}
+  {% if{ cond[(Http.form:"acao" ?? "") == "publicar"] %}{% v["status"] = "published" %}{% } %}
+  {% var e = Entrada:(v["titulo"]) %}
+  {% e.texto = v["texto"] %}
+  {% e.slug = trim:(v["slug"]) %}
+  {% e.resumo = v["resumo"] %}
+  {% e.tipo = v["tipo"] %}
+  {% e.status = v["status"] %}
+  {% e.tags = lista_de_tags:(v["tags"]) %}
+  {% e.publicar_em = trim:(v["publicar_em"]) %}
+  {% e.em_menu = v["em_menu"] %}
+  {% var r = salvar_conteudo:e:((usuario_atual:)["id"]):id %}
+  {% if{ cond[has:r:"erro"] %}{% erro = r["erro"] %}
+  {% } else{ %}
+    {% avisar:"Salvo." %}
+    {% Http.redirect:("/admin/conteudos/" + (str:r["conteudo"].id)) %}
+  {% } %}
+{% } %}
+{% var adm_titulo = pick[id > 0 ; "Editar" ; "Novo conteúdo"] %}
+{% include:"admin/_topo.djo.html" %}
+<h1>{{ adm_titulo }}{% if{ cond[atual != nil] %} <a class="btn sec" href="{{ atual.url }}" target="_blank">Ver ↗</a>{% } %}</h1>
+{% if{ cond[erro != ""] %}<div class="aviso erro">{{ erro }}</div>{% } %}
+<form method="post" class="editor">
+  <input type="hidden" name="_token" value="{{ Session.token: }}">
+  <input class="titulao" name="titulo" value="{{ v["titulo"] }}" placeholder="Título" required>
+  <div class="duas">
+    <textarea id="texto" name="texto" rows="24" placeholder="Escreva em Markdown…">{{ v["texto"] }}</textarea>
+    <div id="previa" class="texto previa" hidden></div>
+  </div>
+  <p><button type="button" class="btn sec" id="btn-previa">Pré-visualizar</button></p>
+  <div class="lateral">
+    <label>Tipo <select name="tipo"><option value="post" {{! pick[v["tipo"] == "post" ; "selected" ; ""] }}>Post</option><option value="page" {{! pick[v["tipo"] == "page" ; "selected" ; ""] }}>Página</option></select></label>
+    <label>Status <select name="status"><option value="draft" {{! pick[v["status"] == "draft" ; "selected" ; ""] }}>Rascunho</option><option value="published" {{! pick[v["status"] == "published" ; "selected" ; ""] }}>Publicado</option></select></label>
+    <label>Tags (separadas por vírgula) <input name="tags" value="{{ v["tags"] }}"></label>
+    <label>Endereço (slug) <input name="slug" value="{{ v["slug"] }}" placeholder="gerado do título"></label>
+    <label>Publicar em (UTC, AAAA-MM-DD HH:mm) <input name="publicar_em" value="{{ v["publicar_em"] }}" placeholder="agora"></label>
+    <label>Resumo <textarea name="resumo" rows="3" placeholder="gerado do texto">{{ v["resumo"] }}</textarea></label>
+    <label class="check"><input type="checkbox" name="em_menu" {{! pick[v["em_menu"] ; "checked" ; ""] }}> Mostrar no menu (páginas)</label>
+  </div>
+  <p>
+    <button class="btn" name="acao" value="salvar">Salvar</button>
+    {% if{ cond[v["status"] != "published"] %}<button class="btn ok" name="acao" value="publicar">Salvar e publicar</button>{% } %}
+  </p>
+</form>
+<script>
+document.getElementById('btn-previa').onclick = async function () {
+  const box = document.getElementById('previa'), f = new URLSearchParams();
+  f.set('_token', document.querySelector('[name=_token]').value);
+  f.set('texto', document.getElementById('texto').value);
+  const r = await fetch('/admin/previa', {method: 'POST', body: f});
+  box.innerHTML = await r.text(); box.hidden = false;
+};
+</script>
+{% include:"admin/_rodape.djo.html" %}

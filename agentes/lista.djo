@@ -1,0 +1,13 @@
+// Face de agente de /, /blog, /tag/{slug} e /busca.
+// Sem token: só o publicado. Com token: também rascunhos (?status=draft).
+// Filtros: ?tipo=post|page  ?tag=  ?q=  ?pagina=  ?por=  ?texto=1 (traz o corpo)  ?campos=  ?tabela
+abrir:
+if{ cond[token_enviado_invalido:]
+    erro_json:401:"token inválido ou revogado"
+    return
+}
+var r = lista_publica:(token_atual: != nil):true
+Http.setheader:"X-Total-Count":(str:r["total"])
+Http.setheader:"X-Page":(str:r["pagina"])
+Http.setheader:"X-Pages":(str:r["paginas"])
+Http.json:r["itens"]

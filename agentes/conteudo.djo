@@ -1,0 +1,14 @@
+// Face de agente de /blog/{slug} e /{slug}: o conteúdo com o texto em Markdown.
+// Com token, enxerga rascunhos (por slug ou id).
+abrir:
+if{ cond[token_enviado_invalido:]
+    erro_json:401:"token inválido ou revogado"
+    return
+}
+var tipo = pick[starts:(Http.path:):"/blog/" ; "post" ; "page"]
+var c = obter:(param:"slug" ?? ""):tipo:(token_atual: != nil):true
+if{ cond[c == nil]
+    erro_json:404:"conteúdo não encontrado"
+    return
+}
+Http.json:c

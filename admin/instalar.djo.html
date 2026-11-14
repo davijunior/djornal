@@ -1,0 +1,49 @@
+{% abrir: %}
+{% if{ cond[instalado:] %}{% Http.redirect:"/entrar" %}{% } %}
+{% var erro = "" %}
+{% var v = {"titulo": "Meu site", "nome": "admin", "url": "http://" + (Http.header:"Host" ?? "localhost:8080")} %}
+{% if{ cond[Http.method: == "POST"] %}
+  {% exigir_csrf: %}
+  {% for{ each[k in ["titulo", "nome", "url"]] %}{% v[k] = trim:(Http.form:k ?? "") %}{% } %}
+  {% var senha = Http.form:"senha" ?? "" %}
+  {% if{ cond[(v["titulo"] == "") or (v["nome"] == "")] %}{% erro = "Preencha o nome do site e do administrador." %}
+  {% } elif{ cond[len:senha < 8] %}{% erro = "A senha precisa de pelo menos 8 caracteres." %}
+  {% } elif{ cond[senha != (Http.form:"senha2" ?? "")] %}{% erro = "As senhas não são iguais." %}
+  {% } else{ %}
+    {% Db.exec:"INSERT INTO usuarios (nome, senha, criado) VALUES (?, ?, ?)":[v["nome"], Hash.password:senha, agora:] %}
+    {% var u = Db.one:"SELECT id FROM usuarios WHERE nome = ?":[v["nome"]] %}
+    {% definir_config:"titulo":(v["titulo"]) %}
+    {% definir_config:"url":(v["url"]) %}
+    {% var e = Entrada:"Bem-vindo":(texto_boas_vindas:(v["url"])) %}
+    {% e.status = "published" %}
+    {% e.tags = ["novidade"] %}
+    {% salvar_conteudo:e:(u["id"]):0 %}
+    {% var s = Entrada:"Sobre":"Esta é uma página. Use páginas para conteúdo que não é cronológico, como \"Sobre\" ou \"Contato\"." %}
+    {% s.tipo = "page" %}
+    {% s.status = "published" %}
+    {% s.em_menu = true %}
+    {% salvar_conteudo:s:(u["id"]):0 %}
+    {% var raw = novo_token:"agente padrão":"escrita":(u["id"]) %}
+    {% Session.renew: %}
+    {% Session.set:"usuario_id":(u["id"]) %}
+    {% Session.set:"token_novo":raw %}
+    {% Http.redirect:"/admin/tokens" %}
+  {% } %}
+{% } %}
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalar</title><link rel="stylesheet" href="/assets/estilo.css"><link rel="stylesheet" href="/assets/admin.css"></head>
+<body class="adm"><main class="caixa">
+<h1>Instalar o Djornal</h1>
+<p>Um passo só. Você poderá mudar tudo depois, no painel.</p>
+{% if{ cond[erro != ""] %}<div class="aviso erro">{{ erro }}</div>{% } %}
+<form method="post">
+  <input type="hidden" name="_token" value="{{ Session.token: }}">
+  <label>Nome do site <input name="titulo" value="{{ v["titulo"] }}" required></label>
+  <label>Endereço público <input name="url" value="{{ v["url"] }}" placeholder="https://meusite.com"></label>
+  <label>Seu usuário <input name="nome" value="{{ v["nome"] }}" required autocomplete="username"></label>
+  <label>Senha (8+ caracteres) <input name="senha" type="password" required autocomplete="new-password"></label>
+  <label>Repita a senha <input name="senha2" type="password" required autocomplete="new-password"></label>
+  <button class="btn">Instalar</button>
+</form>
+</main></body></html>

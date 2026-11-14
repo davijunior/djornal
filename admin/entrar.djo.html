@@ -1,0 +1,33 @@
+{% abrir: %}
+{% if{ cond[not (instalado:)] %}{% Http.redirect:"/instalar" %}{% } %}
+{% var erro = "" %}
+{% if{ cond[Http.method: == "POST"] %}
+  {% exigir_csrf: %}
+  {% if{ cond[login_bloqueado:] %}{% erro = "Muitas tentativas. Aguarde 15 minutos." %}
+  {% } else{ %}
+    {% var u = Db.one:"SELECT * FROM usuarios WHERE nome = ?":[trim:(Http.form:"nome" ?? "")] %}
+    {% if{ cond[(u != nil) and (Hash.verify:(Http.form:"senha" ?? ""):(u["senha"]))] %}
+      {% login_ok: %}
+      {% Session.renew: %}
+      {% Session.set:"usuario_id":(u["id"]) %}
+      {% Http.redirect:"/admin" %}
+    {% } else{ %}
+      {% login_falhou: %}
+      {% erro = "Usuário ou senha inválidos." %}
+    {% } %}
+  {% } %}
+{% } %}
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex"><title>Entrar</title><link rel="stylesheet" href="/assets/estilo.css"><link rel="stylesheet" href="/assets/admin.css"></head>
+<body class="adm"><main class="caixa">
+<h1>Entrar</h1>
+{% if{ cond[erro != ""] %}<div class="aviso erro">{{ erro }}</div>{% } %}
+<form method="post">
+  <input type="hidden" name="_token" value="{{ Session.token: }}">
+  <label>Usuário <input name="nome" required autofocus autocomplete="username"></label>
+  <label>Senha <input name="senha" type="password" required autocomplete="current-password"></label>
+  <button class="btn">Entrar</button>
+</form>
+<p><a href="/">← Voltar ao site</a></p>
+</main></body></html>

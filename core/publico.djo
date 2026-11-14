@@ -1,0 +1,54 @@
+// Ajudas das telas públicas e das faces de agente de leitura.
+
+f q_txt
+    params[nome[String]]
+    return Http.query:nome ?? ""
+
+f q_int
+    params[nome[String], padrao[Int]]
+    return int:(Http.query:nome ?? "") ?? padrao
+
+// /, /blog, /tag/{slug} e /busca usam a mesma consulta.
+// agente = face de agente (aceita ?tipo=, ?status= com token, ?texto=1, ?por= até 100)
+f lista_publica
+    params[rasc[Bool], agente[Bool]]
+    var caminho = Http.path:
+    var tag = ""
+    var tipo = "post"
+    var status = ""
+    var q = q_txt:"q"
+    var titulo = ""
+    var por = min:50:(q_int:"por":10)
+    var com_texto = false
+    if{ cond[starts:caminho:"/tag/"]
+        tag = param:"slug" ?? ""
+        titulo = "Tag: " + tag
+    }
+    elif{ cond[starts:caminho:"/busca"]
+        tipo = ""
+        titulo = "Busca"
+        if{ cond[q == ""] return {"itens": [], "total": 0, "pagina": 1, "paginas": 1, "titulo": titulo, "q": q, "tag": tag} }
+    }
+    elif{ cond[starts:caminho:"/blog"]
+        titulo = "Blog"
+    }
+    if{ cond[agente]
+        if{ cond[q_txt:"tipo" != ""] tipo = q_txt:"tipo" }
+        if{ cond[rasc] status = q_txt:"status" }
+        por = min:100:(q_int:"por":20)
+        com_texto = (q_txt:"texto") == "1"
+    }
+    var r = consulta:tipo:tag:q:status:rasc:(q_int:"pagina":1):por:com_texto
+    r["titulo"] = titulo
+    r["q"] = q
+    r["tag"] = tag
+    return r
+
+// 401 se mandou um token que não vale (nunca fingir que é anônimo)
+f token_enviado_invalido
+    return (chave_enviada: != "") and (token_atual: == nil)
+
+f erro_json
+    params[status[Int], msg[String]]
+    Http.status:status
+    Http.json:{"erro": msg}

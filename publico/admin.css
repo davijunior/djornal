@@ -1,0 +1,22 @@
+body.adm{font-size:16px;line-height:1.5}
+.adm-topo{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 24px;border-bottom:1px solid var(--linha);background:var(--cartao)}
+.adm-miolo{max-width:1000px;margin:0 auto;padding:24px}
+.caixa{max-width:420px;margin:8vh auto;padding:0 20px}
+label{display:block;margin:12px 0;font-size:.85rem;color:var(--mudo)}
+input,select,textarea{width:100%;padding:8px 10px;margin-top:4px;border:1px solid var(--linha);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem}
+.btn{display:inline-block;padding:8px 16px;border:0;border-radius:8px;background:var(--acento);color:#fff;font:inherit;cursor:pointer;text-decoration:none;width:auto}
+.btn.sec{background:var(--cartao);color:var(--fg);border:1px solid var(--linha)}.btn.ok{background:#16a34a}
+.link{background:none;border:0;padding:0;color:var(--acento);cursor:pointer;font:inherit;width:auto}.perigo{color:#dc2626}
+.aviso{padding:10px 14px;margin:0 0 16px;border-radius:8px;background:var(--cartao);border:1px solid var(--linha)}
+.aviso.erro{border-color:#dc2626;color:#dc2626}.aviso.ok{border-color:#16a34a}
+.chave{padding:10px;background:var(--bg);border:1px solid var(--linha);border-radius:8px;overflow:auto;user-select:all}
+.tab{width:100%;border-collapse:collapse}.tab th,.tab td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha);vertical-align:top}
+.tab form{display:inline}.acoes{white-space:nowrap}.acoes a{margin-right:12px}
+.grade{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}.num{flex:1;min-width:140px;padding:16px;border:1px solid var(--linha);border-radius:12px;background:var(--cartao)}.num b{display:block;font-size:2rem}
+.filtro{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.filtro input,.filtro select{width:auto;flex:1;margin:0;min-width:140px}
+.editor .titulao{font-size:1.5rem;font-weight:600;margin-bottom:12px}
+.duas{display:grid;grid-template-columns:1fr;gap:12px}.previa{border:1px solid var(--linha);border-radius:8px;padding:12px;max-height:60vh;overflow:auto}
+.lateral{max-width:560px}.check{display:flex;gap:8px;align-items:center}.check input{width:auto;margin:0}
+.midias{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}.midias img{width:100%;height:130px;object-fit:cover;border-radius:8px}.midias figcaption{font-size:.7rem;word-break:break-all}.arq{font-size:3rem;text-align:center}
+small{color:var(--mudo)}

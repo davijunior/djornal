@@ -1,0 +1,14 @@
+// POST /api/midia — multipart: -F arquivo=@foto.png -F alt="texto". Exige token de escrita.
+abrir:
+var g = guarda_escrita:
+if{ cond[has:g:"erro"]
+    Http.json:g
+    return
+}
+var r = guardar_upload:"arquivo":(Http.form:"titulo" ?? ""):(Http.form:"alt" ?? ""):(g["token"]["usuario_id"])
+if{ cond[has:r:"erro"]
+    Http.status:r["status"]
+    Http.json:{"erro": r["erro"]}
+    return
+}
+Http.json:(midia_json:(r["midia"]):(base_url:)):201

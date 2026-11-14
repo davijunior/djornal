@@ -1,0 +1,38 @@
+{% abrir: %}
+{% exigir_admin: %}
+{% var adm_titulo = "Conteúdos" %}
+{% var r = consulta:(q_txt:"tipo"):"":(q_txt:"q"):(q_txt:"status"):true:(q_int:"pagina":1):20:false %}
+{% include:"admin/_topo.djo.html" %}
+<h1>Conteúdos <a class="btn" href="/admin/conteudos/novo">Novo</a></h1>
+<form class="filtro" method="get">
+  <input name="q" placeholder="Buscar" value="{{ q_txt:"q" }}">
+  <select name="tipo"><option value="">Todos os tipos</option><option value="post" {{! pick[(q_txt:"tipo") == "post" ; "selected" ; ""] }}>Posts</option><option value="page" {{! pick[(q_txt:"tipo") == "page" ; "selected" ; ""] }}>Páginas</option></select>
+  <select name="status"><option value="">Qualquer status</option><option value="draft" {{! pick[(q_txt:"status") == "draft" ; "selected" ; ""] }}>Rascunhos</option><option value="published" {{! pick[(q_txt:"status") == "published" ; "selected" ; ""] }}>Publicados</option></select>
+  <button class="btn">Filtrar</button>
+</form>
+<table class="tab">
+<tr><th>Título</th><th>Tipo</th><th>Status</th><th>Publicação (UTC)</th><th></th></tr>
+{% for{ each[c in r["itens"]] %}
+<tr>
+  <td><a href="/admin/conteudos/{{ c.id }}">{{ c.titulo }}</a><br><small>{{ caminho_de:c.tipo:c.slug }}</small></td>
+  <td>{{ pick[c.tipo == "post" ; "Post" ; "Página"] }}</td>
+  <td><span class="selo {{ c.status }}">{{ pick[c.status == "draft" ; "rascunho" ; pick[c.ao_vivo ; "no ar" ; "agendado"]] }}</span></td>
+  <td>{{ c.publicar_em }}</td>
+  <td class="acoes">
+    <a href="{{ caminho_de:c.tipo:c.slug }}" target="_blank">ver</a>
+    <form method="post" action="/admin/conteudos/{{ c.id }}/apagar" onsubmit="return confirm('Apagar “{{ c.titulo }}”? Não dá para desfazer.')">
+      <input type="hidden" name="_token" value="{{ Session.token: }}"><button class="link perigo">apagar</button>
+    </form>
+  </td>
+</tr>
+{% } %}
+</table>
+{% if{ cond[r["total"] == 0] %}<p>Nenhum conteúdo encontrado.</p>{% } %}
+{% if{ cond[r["paginas"] > 1] %}
+<p class="paginas">
+  {% if{ cond[r["pagina"] > 1] %}<a href="?pagina={{ r["pagina"] - 1 }}&q={{ urlencode:(q_txt:"q") }}&tipo={{ q_txt:"tipo" }}&status={{ q_txt:"status" }}">← Anterior</a>{% } %}
+  Página {{ r["pagina"] }} de {{ r["paginas"] }}
+  {% if{ cond[r["pagina"] < r["paginas"]] %}<a href="?pagina={{ r["pagina"] + 1 }}&q={{ urlencode:(q_txt:"q") }}&tipo={{ q_txt:"tipo" }}&status={{ q_txt:"status" }}">Próxima →</a>{% } %}
+</p>
+{% } %}
+{% include:"admin/_rodape.djo.html" %}

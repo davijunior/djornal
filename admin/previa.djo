@@ -1,0 +1,7 @@
+abrir:
+exigir_admin:
+if{ cond[not (csrf_ok:)]
+    Http.status:403
+    return
+}
+print md_html:(Http.form:"texto" ?? "")

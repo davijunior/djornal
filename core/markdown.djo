@@ -1,0 +1,255 @@
+// Markdown -> HTML, escrito em djo. HTML cru NUNCA passa: tudo é escapado,
+// então um autor (ou um agente induzido) não consegue injetar <script>.
+// Suporta: títulos, parágrafos, listas (- * + e 1.), citação, código (``` e `),
+// negrito, itálico, links, imagens, linha (---), tabelas simples.
+
+f md_achar
+    params[s[String], p[String], de[Int]]
+    var r = index:(slice:s:de):p
+    if{ cond[r < 0] return -1 }
+    return de + r
+
+f md_palavra
+    params[c[String]]
+    if{ cond[c == ""] return false }
+    return contains:"abcdefghijklmnopqrstuvwxyz0123456789":(lower:c)
+
+// só deixa passar endereços seguros (nada de javascript: ou data:)
+f md_url
+    params[u[String]]
+    var x = lower:(trim:u)
+    if{ cond[(starts:x:"javascript:") or (starts:x:"data:") or (starts:x:"vbscript:")] return "#" }
+    return escape:(trim:u)
+
+f md_inline
+    params[s[String]]
+    var out = ""
+    var i = 0
+    var n = len:s
+    while{
+        cond[i < n]
+        var c = slice:s:i:(i + 1)
+        var dois = slice:s:i:(i + 2)
+        var feito = false
+        if{ cond[(c == "\\") and (i + 1 < n)]
+            out = out + (escape:(slice:s:(i + 1):(i + 2)))
+            i = i + 2
+            feito = true
+        }
+        if{ cond[(not feito) and (c == "`")]
+            var fim = md_achar:s:"`":(i + 1)
+            if{ cond[fim > i + 1]
+                out = out + "<code>" + (escape:(slice:s:(i + 1):fim)) + "</code>"
+                i = fim + 1
+                feito = true
+            }
+        }
+        if{ cond[(not feito) and (dois == "![")]
+            var a = md_achar:s:"]":(i + 2)
+            if{ cond[(a > 0) and (slice:s:(a + 1):(a + 2) == "(")]
+                var b = md_achar:s:")":(a + 2)
+                if{ cond[b > 0]
+                    out = out + "<img src=\"" + (md_url:(slice:s:(a + 2):b)) + "\" alt=\"" + (escape:(slice:s:(i + 2):a)) + "\" loading=\"lazy\">"
+                    i = b + 1
+                    feito = true
+                }
+            }
+        }
+        if{ cond[(not feito) and (c == "[")]
+            var a = md_achar:s:"]":(i + 1)
+            if{ cond[(a > 0) and (slice:s:(a + 1):(a + 2) == "(")]
+                var b = md_achar:s:")":(a + 2)
+                if{ cond[b > 0]
+                    out = out + "<a href=\"" + (md_url:(slice:s:(a + 2):b)) + "\">" + (md_inline:(slice:s:(i + 1):a)) + "</a>"
+                    i = b + 1
+                    feito = true
+                }
+            }
+        }
+        if{ cond[(not feito) and (dois == "**")]
+            var fim = md_achar:s:"**":(i + 2)
+            if{ cond[fim > i + 2]
+                out = out + "<strong>" + (md_inline:(slice:s:(i + 2):fim)) + "</strong>"
+                i = fim + 2
+                feito = true
+            }
+        }
+        if{ cond[(not feito) and ((c == "*") or ((c == "_") and (not (md_palavra:(pick[i > 0 ; slice:s:(i - 1):i ; ""])))))]
+            var fim = md_achar:s:c:(i + 1)
+            if{ cond[(fim > i + 1) and (slice:s:(i + 1):(i + 2) != " ")]
+                out = out + "<em>" + (md_inline:(slice:s:(i + 1):fim)) + "</em>"
+                i = fim + 1
+                feito = true
+            }
+        }
+        if{ cond[not feito]
+            out = out + (escape:c)
+            i++
+        }
+    }
+    return out
+
+f md_hr
+    params[t[String]]
+    if{ cond[len:t < 3] return false }
+    var c = slice:t:0:1
+    if{ cond[(c != "-") and (c != "*") and (c != "_")] return false }
+    return replace:t:c:"" == ""
+
+f md_lista_item
+    params[t[String]]
+    // devolve o texto do item (sem o marcador) ou nil
+    if{ cond[(starts:t:"- ") or (starts:t:"* ") or (starts:t:"+ ")] return slice:t:2 }
+    return nil
+
+f md_ordenado_item
+    params[t[String]]
+    var k = index:t:". "
+    if{ cond[(k > 0) and (k < 4)]
+        if{ cond[int:(slice:t:0:k) != nil] return slice:t:(k + 2) }
+    }
+    return nil
+
+f md_celulas
+    params[l[String]]
+    var t = trim:l
+    if{ cond[starts:t:"|"] t = slice:t:1 }
+    if{ cond[ends:t:"|"] t = slice:t:0:((len:t) - 1) }
+    var cels = []
+    for{ each[c in split:t:"|"] push:cels:(trim:c) }
+    return cels
+
+f md_separador
+    params[l[String]]
+    var t = trim:l
+    if{ cond[not (contains:t:"-")] return false }
+    return replace:(replace:(replace:(replace:t:"|":""):"-":""):":":""):" ":"" == ""
+
+f md_inicio_bloco
+    params[t[String]]
+    if{ cond[t == ""] return true }
+    if{ cond[(starts:t:"#") or (starts:t:"```") or (starts:t:">") or (starts:t:"|")] return true }
+    if{ cond[(md_hr:t) or (md_lista_item:t != nil) or (md_ordenado_item:t != nil)] return true }
+    return false
+
+f md_html
+    params[texto[String]]
+    var linhas = split:texto:"\n"
+    var out = ""
+    var i = 0
+    var n = len:linhas
+    while{
+        cond[i < n]
+        var t = trim:(linhas[i])
+        if{ cond[t == ""]
+            i++
+        }
+        elif{ cond[starts:t:"```"]
+            var lang = trim:(slice:t:3)
+            var cod = []
+            i++
+            var fechou = false
+            while{
+                cond[(i < n) and (not fechou)]
+                if{ cond[starts:(trim:(linhas[i])):"```"] fechou = true }
+                else{ push:cod:(linhas[i]) }
+                i++
+            }
+            var cls = ""
+            if{ cond[lang != ""] cls = " class=\"language-" + (escape:lang) + "\"" }
+            out = out + "<pre><code" + cls + ">" + (escape:(join:cod:"\n")) + "</code></pre>\n"
+        }
+        elif{ cond[starts:t:"#"]
+            var nivel = 0
+            while{ cond[(nivel < len:t) and (slice:t:nivel:(nivel + 1) == "#")] nivel++ }
+            if{ cond[(nivel <= 6) and (slice:t:nivel:(nivel + 1) == " ")]
+                var tag = "h" + (str:nivel)
+                var tx = trim:(slice:t:nivel)
+                out = out + "<" + tag + " id=\"" + (slug:tx) + "\">" + (md_inline:tx) + "</" + tag + ">\n"
+            }
+            else{
+                out = out + "<p>" + (md_inline:t) + "</p>\n"
+            }
+            i++
+        }
+        elif{ cond[md_hr:t]
+            out = out + "<hr>\n"
+            i++
+        }
+        elif{ cond[starts:t:">"]
+            var q = []
+            while{
+                cond[(i < n) and (starts:(trim:(linhas[i])):">")]
+                var x = slice:(trim:(linhas[i])):1
+                if{ cond[starts:x:" "] x = slice:x:1 }
+                push:q:x
+                i++
+            }
+            out = out + "<blockquote>\n" + (md_html:(join:q:"\n")) + "</blockquote>\n"
+        }
+        elif{ cond[md_lista_item:t != nil]
+            out = out + "<ul>\n"
+            while{
+                cond[(i < n) and (md_lista_item:(trim:(linhas[i])) != nil)]
+                out = out + "<li>" + (md_inline:(md_lista_item:(trim:(linhas[i])))) + "</li>\n"
+                i++
+            }
+            out = out + "</ul>\n"
+        }
+        elif{ cond[md_ordenado_item:t != nil]
+            out = out + "<ol>\n"
+            while{
+                cond[(i < n) and (md_ordenado_item:(trim:(linhas[i])) != nil)]
+                out = out + "<li>" + (md_inline:(md_ordenado_item:(trim:(linhas[i])))) + "</li>\n"
+                i++
+            }
+            out = out + "</ol>\n"
+        }
+        elif{ cond[(starts:t:"|") and (i + 1 < n) and (md_separador:(linhas[i + 1]))]
+            out = out + "<table>\n<thead><tr>"
+            for{ each[c in md_celulas:(linhas[i])] out = out + "<th>" + (md_inline:c) + "</th>" }
+            out = out + "</tr></thead>\n<tbody>\n"
+            i = i + 2
+            while{
+                cond[(i < n) and (starts:(trim:(linhas[i])):"|")]
+                out = out + "<tr>"
+                for{ each[c in md_celulas:(linhas[i])] out = out + "<td>" + (md_inline:c) + "</td>" }
+                out = out + "</tr>\n"
+                i++
+            }
+            out = out + "</tbody></table>\n"
+        }
+        else{
+            var par = []
+            while{
+                cond[(i < n) and (not (md_inicio_bloco:(trim:(linhas[i]))))]
+                push:par:(trim:(linhas[i]))
+                i++
+            }
+            if{ cond[len:par == 0]
+                par = [t]
+                i++
+            }
+            out = out + "<p>" + (md_inline:(join:par:"\n")) + "</p>\n"
+        }
+    }
+    return out
+
+// texto puro curto (resumo e busca), sem marcas de Markdown
+f md_resumo
+    params[texto[String], max[Int]]
+    var limpo = replace:texto:"\n":" "
+    // tira o endereço dos links: [texto](url) -> texto
+    for{ each[k in range:0:60]
+        var a = index:limpo:"]("
+        if{ cond[a >= 0]
+            var b = index:(slice:limpo:a):")"
+            if{ cond[b >= 0] limpo = (slice:limpo:0:(a + 1)) + (slice:limpo:(a + b + 1)) }
+            else{ limpo = (slice:limpo:0:(a + 1)) + (slice:limpo:(a + 2)) }
+        }
+    }
+    for{ each[c in ["#", "*", "`", ">", "|", "_", "[", "]"]] limpo = replace:limpo:c:"" }
+    limpo = trim:limpo
+    for{ each[k in range:0:5] limpo = replace:limpo:"  ":" " }
+    if{ cond[len:limpo <= max] return limpo }
+    return (trim:(slice:limpo:0:max)) + "…"

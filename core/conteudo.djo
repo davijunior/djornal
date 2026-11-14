@@ -1,0 +1,229 @@
+// Regra de negócio dos conteúdos. A tela, as actions (REST) e o MCP chamam estas funções:
+// as mesmas validações valem para pessoas e agentes.
+
+f erro_campo
+    params[campo[String], msg[String], status[Int]]
+    return {"erro": campo + ": " + msg, "campo": campo, "status": status}
+
+f slug_unico
+    params[titulo[String]]
+    var base = slice:(slug:titulo):0:100
+    if{ cond[base == ""] base = "sem-titulo" }
+    var tent = base
+    var n = 2
+    while{
+        cond[(not (slug_valido:tent)) or (Db.one:"SELECT id FROM conteudos WHERE slug = ?":[tent] != nil)]
+        tent = base + "-" + (str:n)
+        n++
+    }
+    return tent
+
+f caminho_de
+    params[tipo[String], endereco[String]]
+    if{ cond[tipo == "post"] return "/blog/" + endereco }
+    return "/" + endereco
+
+f nomes_tags
+    params[id[Int]]
+    var nomes = []
+    for{ each[t in Db.query:"SELECT t.nome FROM tags t JOIN conteudo_tags ct ON ct.tag_id = t.id WHERE ct.conteudo_id = ? ORDER BY t.nome":[id]] push:nomes:(t["nome"]) }
+    return nomes
+
+// linha do banco -> struct Conteudo (com ou sem o texto em Markdown)
+f montar
+    params[r, base[String], com_texto[Bool]]
+    var c = Conteudo:.
+    c.id = r["id"]
+    c.tipo = r["tipo"]
+    c.titulo = r["titulo"]
+    c.slug = r["slug"]
+    c.resumo = r["resumo"]
+    c.status = r["status"]
+    c.ao_vivo = (r["status"] == "published") and (r["publicar_em"] > 0) and (r["publicar_em"] <= agora:)
+    c.tags = nomes_tags:(r["id"])
+    c.publicar_em = iso:(r["publicar_em"])
+    c.criado = iso:(r["criado"])
+    c.atualizado = iso:(r["atualizado"])
+    c.autor = r["autor"] ?? ""
+    c.em_menu = r["em_menu"] == 1
+    c.url = base + (caminho_de:(r["tipo"]):(r["slug"]))
+    if{ cond[com_texto] c.texto = r["texto"] }
+    return c
+
+f colunas
+    return "c.id, c.tipo, c.titulo, c.slug, c.resumo, c.status, c.publicar_em, c.em_menu, c.criado, c.atualizado, c.texto, u.nome AS autor"
+
+// id ou slug -> linha (ou nil). tipo "" = qualquer; rascunhos false = só o que está no ar
+f achar
+    params[ref[String], tipo[String], rascunhos[Bool]]
+    var onde = "c.slug = ?"
+    var p = [ref]
+    var r = nil
+    for{ each[tentativa in [0, 1]]
+        if{ cond[r == nil]
+            var o = "c.slug = ?"
+            var v = ref
+            if{ cond[tentativa == 1]
+                o = "c.id = ?"
+                v = int:ref
+            }
+            if{ cond[v != nil]
+                var sql = "SELECT " + (colunas:) + " FROM conteudos c LEFT JOIN usuarios u ON u.id = c.autor_id WHERE " + o
+                var ps = [v]
+                if{ cond[tipo != ""]
+                    sql = sql + " AND c.tipo = ?"
+                    push:ps:tipo
+                }
+                if{ cond[not rascunhos]
+                    sql = sql + " AND c.status = 'published' AND c.publicar_em <= ?"
+                    push:ps:(agora:)
+                }
+                r = Db.one:sql:ps
+            }
+        }
+    }
+    return r
+
+f obter
+    params[ref[String], tipo[String], rascunhos[Bool], com_texto[Bool]]
+    var r = achar:ref:tipo:rascunhos
+    if{ cond[r == nil] return nil }
+    return montar:r:(base_url:):com_texto
+
+// lista paginada. Devolve {"itens": [Conteudo], "total", "pagina", "paginas"}
+f consulta
+    params[tipo[String], tag[String], q[String], status[String], rascunhos[Bool], pagina[Int], por[Int], com_texto[Bool]]
+    var onde = ["1 = 1"]
+    var p = []
+    if{ cond[tipo != ""]
+        push:onde:"c.tipo = ?"
+        push:p:tipo
+    }
+    if{ cond[not rascunhos]
+        push:onde:"c.status = 'published' AND c.publicar_em <= ?"
+        push:p:(agora:)
+    }
+    elif{ cond[status != ""]
+        push:onde:"c.status = ?"
+        push:p:status
+    }
+    if{ cond[tag != ""]
+        push:onde:"c.id IN (SELECT ct.conteudo_id FROM conteudo_tags ct JOIN tags t ON t.id = ct.tag_id WHERE t.slug = ?)"
+        push:p:(slug:tag)
+    }
+    if{ cond[q != ""]
+        push:onde:"(c.titulo LIKE ? OR c.texto LIKE ?)"
+        push:p:("%" + q + "%")
+        push:p:("%" + q + "%")
+    }
+    var filtro = join:onde:" AND "
+    var total = (Db.one:"SELECT COUNT(*) AS n FROM conteudos c WHERE " + filtro:p)["n"]
+    var paginas = max:1:(ceil:((float:total) / (float:por)))
+    var pg = min:(max:1:pagina):paginas
+    var ps = []
+    for{ each[x in p] push:ps:x }
+    push:ps:por
+    push:ps:((pg - 1) * por)
+    var rows = Db.query:"SELECT " + (colunas:) + " FROM conteudos c LEFT JOIN usuarios u ON u.id = c.autor_id WHERE " + filtro + " ORDER BY c.publicar_em DESC, c.id DESC LIMIT ? OFFSET ?":ps
+    var base = base_url:
+    var itens = []
+    for{ each[r in rows] push:itens:(montar:r:base:com_texto) }
+    return {"itens": itens, "total": total, "pagina": pg, "paginas": paginas}
+
+f definir_tags
+    params[id[Int], nomes[Arr]]
+    Db.exec:"DELETE FROM conteudo_tags WHERE conteudo_id = ?":[id]
+    for{ each[nome in nomes]
+        var n = trim:nome
+        var s = slug:n
+        if{ cond[(n != "") and (s != "")]
+            Db.exec:"INSERT OR IGNORE INTO tags (nome, slug) VALUES (?, ?)":[n, s]
+            var t = Db.one:"SELECT id FROM tags WHERE slug = ?":[s]
+            Db.exec:"INSERT OR IGNORE INTO conteudo_tags (conteudo_id, tag_id) VALUES (?, ?)":[id, t["id"]]
+        }
+    }
+    Db.exec:"DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM conteudo_tags)"
+
+// Cria (id = 0) ou substitui (id > 0). Devolve {"conteudo": Conteudo} ou {"erro", "campo", "status"}
+f salvar_conteudo
+    params[e[Entrada], autor_id[Int], id[Int]]
+    var titulo = trim:e.titulo
+    if{ cond[titulo == ""] return erro_campo:"titulo":"não pode ser vazio":422 }
+    if{ cond[len:titulo > 200] return erro_campo:"titulo":"no máximo 200 letras":422 }
+    if{ cond[len:e.texto > 100000] return erro_campo:"texto":"muito grande (máximo 100 mil caracteres); divida em partes":422 }
+    if{ cond[(e.tipo != "post") and (e.tipo != "page")] return erro_campo:"tipo":"use 'post' ou 'page'":422 }
+    if{ cond[(e.status != "draft") and (e.status != "published")] return erro_campo:"status":"use 'draft' ou 'published'":422 }
+    if{ cond[len:e.tags > 20] return erro_campo:"tags":"no máximo 20":422 }
+    for{ each[t in e.tags]
+        if{ cond[not (is:t:"String")] return erro_campo:"tags":"deve ser uma lista de textos":422 }
+        if{ cond[len:t > 40] return erro_campo:"tags":"cada tag tem no máximo 40 letras":422 }
+    }
+    var atual = nil
+    if{ cond[id > 0]
+        atual = Db.one:"SELECT * FROM conteudos WHERE id = ?":[id]
+        if{ cond[atual == nil] return {"erro": "conteúdo " + (str:id) + " não existe", "status": 404} }
+    }
+    var endereco = ""
+    if{ cond[e.slug != ""]
+        endereco = slug:e.slug
+        if{ cond[not (slug_valido:endereco)] return erro_campo:"slug":"'" + e.slug + "' é inválido ou reservado pelo sistema":422 }
+        var outro = Db.one:"SELECT id FROM conteudos WHERE slug = ? AND id != ?":[endereco, id]
+        if{ cond[outro != nil] return erro_campo:"slug":"'" + endereco + "' já está em uso":409 }
+    }
+    elif{ cond[atual != nil]
+        endereco = atual["slug"]
+    }
+    else{
+        endereco = slug_unico:titulo
+    }
+    var quando = 0
+    if{ cond[e.publicar_em != ""]
+        quando = ler_data:e.publicar_em
+        if{ cond[quando == nil] return erro_campo:"publicar_em":"use AAAA-MM-DD, AAAA-MM-DD HH:mm ou ISO 8601 (UTC)":422 }
+    }
+    elif{ cond[atual != nil]
+        quando = atual["publicar_em"]
+    }
+    if{ cond[(e.status == "published") and (quando == 0)] quando = agora: }
+    var html = md_html:e.texto
+    var resumo = trim:e.resumo
+    if{ cond[resumo == ""] resumo = md_resumo:e.texto:200 }
+    var menu = 0
+    if{ cond[e.em_menu and (e.tipo == "page")] menu = 1 }
+    var novo_id = id
+    if{ cond[id == 0]
+        var r = Db.exec:"INSERT INTO conteudos (tipo, titulo, slug, texto, html, resumo, status, publicar_em, em_menu, autor_id, criado, atualizado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)":[e.tipo, titulo, endereco, e.texto, html, resumo, e.status, quando, menu, autor_id, agora:, agora:]
+        novo_id = r["last_id"]
+    }
+    else{
+        Db.exec:"UPDATE conteudos SET tipo = ?, titulo = ?, slug = ?, texto = ?, html = ?, resumo = ?, status = ?, publicar_em = ?, em_menu = ?, atualizado = ? WHERE id = ?":[e.tipo, titulo, endereco, e.texto, html, resumo, e.status, quando, menu, agora:, id]
+    }
+    definir_tags:novo_id:e.tags
+    return {"conteudo": obter:(str:novo_id):"":true:true}
+
+f mudar_status
+    params[id[Int], status[String]]
+    var atual = Db.one:"SELECT * FROM conteudos WHERE id = ?":[id]
+    if{ cond[atual == nil] return {"erro": "conteúdo " + (str:id) + " não existe", "status": 404} }
+    var quando = atual["publicar_em"]
+    if{ cond[(status == "published") and (quando == 0)] quando = agora: }
+    Db.exec:"UPDATE conteudos SET status = ?, publicar_em = ?, atualizado = ? WHERE id = ?":[status, quando, agora:, id]
+    return {"conteudo": obter:(str:id):"":true:false}
+
+f apagar_por_id
+    params[id[Int]]
+    var atual = Db.one:"SELECT id, slug FROM conteudos WHERE id = ?":[id]
+    if{ cond[atual == nil] return {"erro": "conteúdo " + (str:id) + " não existe", "status": 404} }
+    Db.exec:"DELETE FROM conteudo_tags WHERE conteudo_id = ?":[id]
+    Db.exec:"DELETE FROM conteudos WHERE id = ?":[id]
+    Db.exec:"DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM conteudo_tags)"
+    return {"apagado": id, "slug": atual["slug"]}
+
+f html_de
+    params[id[Int]]
+    var r = Db.one:"SELECT html FROM conteudos WHERE id = ?":[id]
+    if{ cond[r == nil] return "" }
+    return r["html"]
+
+f paginas_do_menu
+    return Db.query:"SELECT titulo, slug FROM conteudos WHERE tipo = 'page' AND em_menu = 1 AND status = 'published' AND publicar_em <= ? ORDER BY titulo":[agora:]

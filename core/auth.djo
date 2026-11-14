@@ -1,0 +1,99 @@
+// Sessão (painel) e tokens (agentes). Senhas e tokens nunca ficam em texto no banco.
+
+f usuario_atual
+    var id = Session.get:"usuario_id"
+    if{ cond[id == nil] return nil }
+    return Db.one:"SELECT id, nome FROM usuarios WHERE id = ?":[id]
+
+f exigir_admin
+    if{ cond[usuario_atual: == nil] Http.redirect:"/entrar" }
+
+f csrf_ok
+    return Session.verify:(Http.form:"_token" ?? "")
+
+// formulários POST chamam isto no começo
+f exigir_csrf
+    if{ cond[not (csrf_ok:)]
+        Http.status:403
+        print "Token de segurança inválido. Volte, recarregue a página e tente de novo."
+        Http.redirect:"/entrar"
+    }
+
+// ---- tokens de API ----
+
+f hash_token
+    params[raw[String]]
+    return Hash.sha256:raw
+
+// devolve a chave em texto: só aparece UMA vez, o banco guarda o hash
+f novo_token
+    params[nome[String], escopo[String], usuario_id[Int]]
+    var raw = "cms_" + (Hash.random:24)
+    Db.exec:"INSERT INTO tokens (nome, hash, prefixo, escopo, ativo, usuario_id, criado) VALUES (?, ?, ?, ?, 1, ?, ?)":[nome, hash_token:raw, slice:raw:0:8, escopo, usuario_id, agora:]
+    return raw
+
+f chave_enviada
+    var h = Http.header:"Authorization" ?? ""
+    if{ cond[starts:(lower:h):"bearer "] return trim:(slice:h:7) }
+    return trim:(Http.header:"X-API-Key" ?? "")
+
+// token válido (linha do banco) ou nil
+f token_atual
+    var raw = chave_enviada:
+    if{ cond[raw == ""] return nil }
+    var t = Db.one:"SELECT * FROM tokens WHERE hash = ? AND ativo = 1":[hash_token:raw]
+    if{ cond[t == nil] return nil }
+    if{ cond[((agora:) - t["ultimo_uso"]) > 60]
+        Db.exec:"UPDATE tokens SET ultimo_uso = ? WHERE id = ?":[agora:, t["id"]]
+    }
+    return t
+
+// pode ver rascunhos? (quem está logado no painel ou tem token)
+f pode_ver_rascunhos
+    if{ cond[usuario_atual: != nil] return true }
+    return token_atual: != nil
+
+// uso nas actions: devolve {"token": linha} ou {"erro": ..} (já com o status HTTP definido)
+f guarda_escrita
+    var raw = chave_enviada:
+    if{ cond[raw == ""]
+        Http.status:401
+        Http.setheader:"WWW-Authenticate":"Bearer"
+        return {"erro": "autenticação necessária: envie 'Authorization: Bearer <token>' (crie um token em /admin/tokens)"}
+    }
+    var t = token_atual:
+    if{ cond[t == nil]
+        Http.status:401
+        Http.setheader:"WWW-Authenticate":"Bearer"
+        return {"erro": "token inválido ou revogado"}
+    }
+    if{ cond[t["escopo"] != "escrita"]
+        Http.status:403
+        return {"erro": "este token é somente leitura"}
+    }
+    return {"token": t}
+
+f guarda_leitura
+    var t = token_atual:
+    if{ cond[t == nil]
+        Http.status:401
+        Http.setheader:"WWW-Authenticate":"Bearer"
+        return {"erro": "autenticação necessária"}
+    }
+    return {"token": t}
+
+// ---- proteção contra tentativa de senha em sequência ----
+
+f login_bloqueado
+    var r = Db.one:"SELECT n, ate FROM falhas_login WHERE ip = ?":[Http.ip:]
+    if{ cond[r == nil] return false }
+    return (r["n"] >= 5) and (r["ate"] > agora:)
+
+f login_falhou
+    var r = Db.one:"SELECT n, ate FROM falhas_login WHERE ip = ?":[Http.ip:]
+    var n = 1
+    if{ cond[(r != nil) and (r["ate"] > agora:)] n = r["n"] + 1 }
+    Db.exec:"INSERT INTO falhas_login (ip, n, ate) VALUES (?, ?, ?) ON CONFLICT(ip) DO UPDATE SET n = excluded.n, ate = excluded.ate":[Http.ip:, n, (agora:) + 900]
+
+f login_ok
+    Db.exec:"DELETE FROM falhas_login WHERE ip = ?":[Http.ip:]

@@ -1,0 +1,36 @@
+// O que o agente ENVIA ao criar/editar. Só 'titulo' é obrigatório; o resto tem padrão.
+struct Entrada
+    titulo[String]
+    texto[String] = ""
+    slug[String] = ""
+    resumo[String] = ""
+    tipo[String] = "post"
+    status[String] = "draft"
+    tags[Arr] = []
+    publicar_em[String] = ""
+    em_menu[Bool] = false
+
+// O que o agente RECEBE. Datas em UTC, "AAAA-MM-DD HH:mm:ss".
+struct Conteudo
+    id[Int]
+    tipo[String]
+    titulo[String]
+    slug[String]
+    resumo[String]
+    status[String]
+    ao_vivo[Bool]
+    tags[Arr]
+    publicar_em[String]
+    criado[String]
+    atualizado[String]
+    autor[String]
+    em_menu[Bool]
+    url[String]
+    texto[String]
+
+struct Ajustes
+    titulo[String] = ""
+    slogan[String] = ""
+    descricao[String] = ""
+    rodape[String] = ""
+    url[String] = ""

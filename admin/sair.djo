@@ -1,0 +1,2 @@
+Session.destroy:
+Http.redirect:"/"

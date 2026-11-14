@@ -1,0 +1,21 @@
+{% abrir: %}
+{% var ref = param:"slug" ?? "" %}
+{% var tipo = pick[starts:(Http.path:):"/blog/" ; "post" ; "page"] %}
+{% var c = obter:ref:tipo:(pode_ver_rascunhos:):true %}
+{% if{ cond[c == nil] %}
+  {% Http.status:404 %}
+  {% include:"404.djo.html" %}
+  {% return %}
+{% } %}
+{% var pag_titulo = c.titulo %}
+{% var pag_desc = c.resumo %}
+{% include:"paginas/_topo.djo.html" %}
+<article>
+  <h1>{{ c.titulo }}{% if{ cond[not c.ao_vivo] %} <span class="selo">pré-visualização · {{ pick[c.status == "draft" ; "rascunho" ; "agendado"] }}</span>{% } %}</h1>
+  {% if{ cond[c.tipo == "post"] %}
+  <p class="meta">{{ data_br:(ler_data:c.publicar_em) }}{% if{ cond[c.autor != ""] %} · {{ c.autor }}{% } %}{% for{ each[t in c.tags] %} · <a href="/tag/{{ slug:t }}">#{{ t }}</a>{% } %}</p>
+  {% } %}
+  <div class="texto">{{! html_de:c.id }}</div>
+  {% if{ cond[usuario_atual: != nil] %}<p><a href="/admin/conteudos/{{ c.id }}">Editar</a></p>{% } %}
+</article>
+{% include:"paginas/_rodape.djo.html" %}

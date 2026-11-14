@@ -1,0 +1,3 @@
+// Face de agente de "/": título, endereço e contagens do site
+abrir:
+Http.json:(resumo_do_site:)

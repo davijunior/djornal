@@ -1,0 +1,12 @@
+abrir:
+var cfg = site:
+var base = base_url:
+var r = consulta:"post":"":"":"":false:1:30:true
+Http.setheader:"Content-Type":"application/rss+xml; charset=utf-8"
+print "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+print "<rss version=\"2.0\"><channel>"
+print "<title>" + (xml:cfg["titulo"]) + "</title><link>" + base + "/</link><description>" + (xml:(pick[cfg["slogan"] != "" ; cfg["slogan"] ; cfg["titulo"]])) + "</description>"
+for{ each[c in r["itens"]]
+    print "<item><title>" + (xml:c.titulo) + "</title><link>" + c.url + "</link><guid>" + c.url + "</guid><pubDate>" + (rfc822:(ler_data:c.publicar_em)) + "</pubDate><description>" + (xml:(html_de:c.id)) + "</description></item>"
+}
+print "</channel></rss>"

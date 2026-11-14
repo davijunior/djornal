@@ -1,0 +1,26 @@
+{% var cfg = site: %}
+{% var aviso = pegar_aviso: %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ adm_titulo }} · Painel</title>
+<link rel="stylesheet" href="/assets/estilo.css">
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body class="adm">
+<header class="adm-topo">
+  <a class="marca" href="/admin">{{ cfg["titulo"] }}</a>
+  <nav>
+    <a href="/admin/conteudos">Conteúdos</a>
+    <a href="/admin/midia">Mídia</a>
+    <a href="/admin/tokens">Tokens</a>
+    <a href="/admin/config">Configurações</a>
+    <a href="/" target="_blank">Ver site ↗</a>
+    <a href="/sair">Sair</a>
+  </nav>
+</header>
+<main class="adm-miolo">
+{% if{ cond[aviso != nil] %}<div class="aviso">{{ aviso }}</div>{% } %}

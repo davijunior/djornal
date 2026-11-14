@@ -1,0 +1,1 @@
+Arquivos enviados pelo painel ficam nesta pasta (uploads/AAAA-MM/).

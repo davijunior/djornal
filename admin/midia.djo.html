@@ -1,0 +1,32 @@
+{% abrir: %}
+{% exigir_admin: %}
+{% if{ cond[Http.method: == "POST"] %}
+  {% exigir_csrf: %}
+  {% var r = guardar_upload:"arquivo":(Http.form:"titulo" ?? ""):(Http.form:"alt" ?? ""):((usuario_atual:)["id"]) %}
+  {% if{ cond[has:r:"erro"] %}{% avisar:(r["erro"]) %}
+  {% } else{ %}{% avisar:("Enviado. Para usar num texto: ![" + (r["midia"]["alt"] ?? "") + "](/" + r["midia"]["arquivo"] + ")") %}{% } %}
+  {% Http.redirect:"/admin/midia" %}
+{% } %}
+{% var adm_titulo = "Mídia" %}
+{% var itens = Db.query:"SELECT * FROM midias ORDER BY id DESC LIMIT 100" %}
+{% include:"admin/_topo.djo.html" %}
+<h1>Mídia</h1>
+<form method="post" enctype="multipart/form-data" class="filtro">
+  <input type="hidden" name="_token" value="{{ Session.token: }}">
+  <input type="file" name="arquivo" required>
+  <input name="alt" placeholder="Texto alternativo (descreva a imagem)">
+  <button class="btn">Enviar</button>
+</form>
+<p><small>Aceitos: imagens (jpg, png, gif, webp, avif), pdf, txt, csv, json, md, zip, mp3, wav, mp4, webm. Até 10 MB.</small></p>
+<div class="midias">
+{% for{ each[m in itens] %}
+  <figure>
+    {% if{ cond[(ends:(lower:(m["arquivo"])):".png") or (ends:(lower:(m["arquivo"])):".jpg") or (ends:(lower:(m["arquivo"])):".jpeg") or (ends:(lower:(m["arquivo"])):".gif") or (ends:(lower:(m["arquivo"])):".webp") or (ends:(lower:(m["arquivo"])):".avif")] %}
+      <img src="/{{ m["arquivo"] }}" alt="{{ m["alt"] }}" loading="lazy">
+    {% } else{ %}<div class="arq">📄</div>{% } %}
+    <figcaption><code>![{{ m["alt"] }}](/{{ m["arquivo"] }})</code></figcaption>
+  </figure>
+{% } %}
+</div>
+{% if{ cond[len:itens == 0] %}<p>Nenhum arquivo ainda.</p>{% } %}
+{% include:"admin/_rodape.djo.html" %}

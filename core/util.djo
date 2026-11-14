@@ -1,0 +1,53 @@
+// utilidades pequenas, usadas pelo sistema inteiro
+
+f agora
+    return Time.now:
+
+// "2026-11-13 14:05:00" (UTC)
+f iso
+    params[ts]
+    if{ cond[(ts == nil) or (ts == 0)] return "" }
+    return Time.format:ts:"YYYY-MM-DD HH:mm:ss"
+
+f data_br
+    params[ts]
+    if{ cond[(ts == nil) or (ts == 0)] return "" }
+    return Time.format:ts:"DD/MM/YYYY"
+
+// aceita "2026-12-01", "2026-12-01 09:30", "2026-12-01T09:30:00Z"... ; devolve Int ou nil
+f ler_data
+    params[texto[String]]
+    var t = trim:(replace:(replace:texto:"T":" "):"Z":"")
+    for{ each[fmt in ["YYYY-MM-DD HH:mm:ss", "YYYY-MM-DD HH:mm", "YYYY-MM-DD"]]
+        var r = Time.parse:t:fmt
+        if{ cond[r != nil] return r }
+    }
+    return nil
+
+// RFC 822, usado no RSS
+f rfc822
+    params[ts[Int]]
+    var d = Time.date:ts
+    var dias = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    var meses = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    return dias[d["weekday"]] + ", " + (padleft:(str:d["day"]):2:"0") + " " + meses[d["month"] - 1] + " " + (str:d["year"]) + " " + (Time.format:ts:"HH:mm:ss") + " +0000"
+
+// slugs que colidiriam com rotas do sistema
+f reservados
+    return ["admin", "api", "blog", "tag", "busca", "uploads", "assets", "instalar", "entrar", "sair", "feed", "sitemap", "robots", "feed.xml", "sitemap.xml", "robots.txt"]
+
+f slug_valido
+    params[s[String]]
+    return (s != "") and (not (contains:(reservados:):s))
+
+// endereço público do site (sem a barra final)
+f base_url
+    var c = Db.one:"SELECT valor FROM config WHERE chave = 'url'"
+    if{ cond[(c != nil) and (c["valor"] != "")] return c["valor"] }
+    var host = Http.header:"Host" ?? "localhost:8080"
+    return "http://" + host
+
+// XML precisa de & < > escapados; escape: já faz isso
+f xml
+    params[s[String]]
+    return escape:s

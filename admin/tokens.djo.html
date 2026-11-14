@@ -1,0 +1,57 @@
+{% abrir: %}
+{% exigir_admin: %}
+{% var eu = usuario_atual: %}
+{% if{ cond[Http.method: == "POST"] %}
+  {% exigir_csrf: %}
+  {% var acao = Http.form:"acao" ?? "" %}
+  {% if{ cond[acao == "criar"] %}
+    {% var nome = trim:(Http.form:"nome" ?? "") %}
+    {% var escopo = pick[(Http.form:"escopo" ?? "") == "leitura" ; "leitura" ; "escrita"] %}
+    {% if{ cond[nome == ""] %}{% avisar:"Dê um nome ao token (ex.: o nome do agente)." %}
+    {% } else{ %}{% Session.set:"token_novo":(novo_token:nome:escopo:(eu["id"])) %}{% } %}
+  {% } elif{ cond[acao == "revogar"] %}
+    {% Db.exec:"UPDATE tokens SET ativo = 0 WHERE id = ?":[int:(Http.form:"id" ?? "") ?? 0] %}
+    {% avisar:"Token revogado." %}
+  {% } %}
+  {% Http.redirect:"/admin/tokens" %}
+{% } %}
+{% var novo = Session.get:"token_novo" %}
+{% Session.del:"token_novo" %}
+{% var base = base_url: %}
+{% var lista = Db.query:"SELECT * FROM tokens ORDER BY ativo DESC, id DESC" %}
+{% var adm_titulo = "Tokens" %}
+{% include:"admin/_topo.djo.html" %}
+<h1>Tokens de API</h1>
+<p>Um token dá a um agente de IA (ou script) acesso à API de escrita e aos rascunhos. Crie um por agente; revogue quando não precisar mais.</p>
+{% if{ cond[novo != nil] %}
+<div class="aviso ok">
+  <b>Copie agora: esta chave não será mostrada de novo.</b>
+  <pre class="chave">{{ novo }}</pre>
+  <p>Testar: <code>curl -H "Accept: application/json" -H "Authorization: Bearer {{ novo }}" "{{ base }}/blog?status=draft"</code></p>
+  <p>O que o token pode fazer: <a href="/.well-known/ai-manifest.json">/.well-known/ai-manifest.json</a></p>
+</div>
+{% } %}
+<form method="post" class="filtro">
+  <input type="hidden" name="_token" value="{{ Session.token: }}"><input type="hidden" name="acao" value="criar">
+  <input name="nome" placeholder="Nome (ex.: agente do blog)" required>
+  <select name="escopo"><option value="escrita">Leitura e escrita</option><option value="leitura">Somente leitura (vê rascunhos)</option></select>
+  <button class="btn">Criar token</button>
+</form>
+<table class="tab">
+<tr><th>Nome</th><th>Início da chave</th><th>Permissão</th><th>Último uso (UTC)</th><th></th></tr>
+{% for{ each[t in lista] %}
+<tr>
+  <td>{{ t["nome"] }}</td><td><code>{{ t["prefixo"] }}…</code></td><td>{{ t["escopo"] }}</td>
+  <td>{{ pick[t["ultimo_uso"] > 0 ; iso:(t["ultimo_uso"]) ; "nunca"] }}</td>
+  <td class="acoes">
+    {% if{ cond[t["ativo"] == 1] %}
+    <form method="post" onsubmit="return confirm('Revogar este token? Quem o usa perde o acesso.')">
+      <input type="hidden" name="_token" value="{{ Session.token: }}"><input type="hidden" name="acao" value="revogar"><input type="hidden" name="id" value="{{ t["id"] }}">
+      <button class="link perigo">revogar</button>
+    </form>
+    {% } else{ %}<span class="selo">revogado</span>{% } %}
+  </td>
+</tr>
+{% } %}
+</table>
+{% include:"admin/_rodape.djo.html" %}

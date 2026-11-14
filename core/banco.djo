@@ -1,0 +1,32 @@
+// Banco SQLite do Djornal. Tudo mora em _dados/ (nunca é servido). Backup = copiar essa pasta e uploads/.
+
+f abrir
+    if{ cond[not (File.exists:"_dados")] File.mkdir:"_dados" }
+    Db.open:"_dados/cms.db"
+    var t = Db.one:"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'config'"
+    if{ cond[t == nil] migrar: }
+
+f migrar
+    Db.exec:"CREATE TABLE IF NOT EXISTS config (chave TEXT PRIMARY KEY, valor TEXT)"
+    Db.exec:"CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY, nome TEXT UNIQUE NOT NULL, senha TEXT NOT NULL, criado INTEGER)"
+    Db.exec:"CREATE TABLE IF NOT EXISTS conteudos (id INTEGER PRIMARY KEY, tipo TEXT NOT NULL DEFAULT 'post', titulo TEXT NOT NULL, slug TEXT UNIQUE NOT NULL, texto TEXT NOT NULL DEFAULT '', html TEXT NOT NULL DEFAULT '', resumo TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'draft', publicar_em INTEGER NOT NULL DEFAULT 0, em_menu INTEGER NOT NULL DEFAULT 0, autor_id INTEGER, criado INTEGER, atualizado INTEGER)"
+    Db.exec:"CREATE INDEX IF NOT EXISTS idx_conteudos_lista ON conteudos (tipo, status, publicar_em)"
+    Db.exec:"CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY, nome TEXT UNIQUE NOT NULL, slug TEXT UNIQUE NOT NULL)"
+    Db.exec:"CREATE TABLE IF NOT EXISTS conteudo_tags (conteudo_id INTEGER NOT NULL, tag_id INTEGER NOT NULL, PRIMARY KEY (conteudo_id, tag_id))"
+    Db.exec:"CREATE TABLE IF NOT EXISTS midias (id INTEGER PRIMARY KEY, arquivo TEXT NOT NULL, titulo TEXT, alt TEXT, autor_id INTEGER, criado INTEGER)"
+    Db.exec:"CREATE TABLE IF NOT EXISTS tokens (id INTEGER PRIMARY KEY, nome TEXT NOT NULL, hash TEXT UNIQUE NOT NULL, prefixo TEXT, escopo TEXT NOT NULL, ativo INTEGER NOT NULL DEFAULT 1, usuario_id INTEGER, criado INTEGER, ultimo_uso INTEGER NOT NULL DEFAULT 0)"
+    Db.exec:"CREATE TABLE IF NOT EXISTS falhas_login (ip TEXT PRIMARY KEY, n INTEGER, ate INTEGER)"
+
+f instalado
+    var u = Db.one:"SELECT COUNT(*) AS n FROM usuarios"
+    return u["n"] > 0
+
+// configurações do site, com padrões
+f site
+    var s = {"titulo": "Meu site", "slogan": "", "descricao": "", "rodape": "", "url": ""}
+    for{ each[r in Db.query:"SELECT chave, valor FROM config"] s[r["chave"]] = r["valor"] }
+    return s
+
+f definir_config
+    params[chave[String], valor[String]]
+    Db.exec:"INSERT INTO config (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor":[chave, valor]

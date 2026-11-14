@@ -1,0 +1,6 @@
+abrir:
+exigir_admin:
+exigir_csrf:
+var r = apagar_por_id:(int:(param:"id" ?? "") ?? 0)
+avisar:(pick[has:r:"erro" ; r["erro"] ; "Apagado."])
+Http.redirect:"/admin/conteudos"

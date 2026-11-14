@@ -1,0 +1,26 @@
+:root{--bg:#fff;--fg:#1b1f24;--mudo:#667085;--linha:#e4e7ec;--acento:#2563eb;--cartao:#f8fafc}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--fg:#e6e8eb;--mudo:#9aa3af;--linha:#262b33;--acento:#7aa2ff;--cartao:#161a20}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--acento)}
+.miolo{max-width:720px;margin:0 auto;padding:0 20px}
+.topo{border-bottom:1px solid var(--linha)}
+.topo .miolo{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:22px;padding-bottom:22px}
+.marca{font-weight:700;font-size:1.25rem;color:var(--fg);text-decoration:none}
+nav a{margin-left:18px;text-decoration:none;color:var(--mudo)}nav a:hover{color:var(--acento)}
+main.miolo{padding-top:32px;padding-bottom:48px;min-height:60vh}
+h1{line-height:1.2;font-size:2rem;margin:0 0 .6rem}
+.slogan{color:var(--mudo);font-size:1.15rem}
+.cartao{padding:16px 0;border-bottom:1px solid var(--linha)}
+.cartao h2{margin:0;font-size:1.3rem}.cartao h2 a{color:var(--fg);text-decoration:none}
+.cartao p{margin:.3rem 0}
+.meta{color:var(--mudo);font-size:.85rem}
+.selo{font-size:.7rem;background:var(--cartao);border:1px solid var(--linha);border-radius:6px;padding:2px 6px;color:var(--mudo);vertical-align:middle;font-weight:400}
+.texto img{max-width:100%;height:auto}
+.texto pre{background:var(--cartao);border:1px solid var(--linha);padding:12px;border-radius:8px;overflow:auto;font-size:.85rem}
+.texto code,code{background:var(--cartao);padding:1px 5px;border-radius:4px;font-size:.9em}.texto pre code{padding:0;background:none}
+.texto blockquote{margin-left:0;padding-left:16px;border-left:3px solid var(--linha);color:var(--mudo)}
+.texto table{border-collapse:collapse}.texto td,.texto th{border:1px solid var(--linha);padding:6px 10px}
+.paginas a{margin:0 12px}
+.rodape{border-top:1px solid var(--linha);padding:20px 0 40px;color:var(--mudo);font-size:.85rem}
+.rodape input{width:100%;padding:8px 10px;border:1px solid var(--linha);border-radius:8px;background:var(--cartao);color:var(--fg)}

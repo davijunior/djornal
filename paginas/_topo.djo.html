@@ -1,0 +1,22 @@
+{% var cfg = site: %}
+{% var menu = paginas_do_menu: %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if{ cond[pag_titulo != ""] %}{{ pag_titulo }} · {% } %}{{ cfg["titulo"] }}</title>
+<meta name="description" content="{{ pick[pag_desc != "" ; pag_desc ; cfg["descricao"]] }}">
+<link rel="stylesheet" href="/assets/estilo.css">
+<link rel="alternate" type="application/rss+xml" title="{{ cfg["titulo"] }}" href="/feed.xml">
+</head>
+<body>
+<header class="topo"><div class="miolo">
+  <a class="marca" href="/">{{ cfg["titulo"] }}</a>
+  <nav>
+    <a href="/blog">Blog</a>
+    {% for{ each[m in menu] %}<a href="/{{ m["slug"] }}">{{ m["titulo"] }}</a>{% } %}
+    {% if{ cond[usuario_atual: != nil] %}<a href="/admin">Painel</a>{% } %}
+  </nav>
+</div></header>
+<main class="miolo">

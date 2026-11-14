@@ -1,0 +1,11 @@
+// GET /api/midia — lista os arquivos enviados (exige token)
+abrir:
+var g = guarda_leitura:
+if{ cond[has:g:"erro"]
+    Http.json:g
+    return
+}
+var base = base_url:
+var lista = []
+for{ each[m in Db.query:"SELECT * FROM midias ORDER BY id DESC LIMIT 100"] push:lista:(midia_json:m:base) }
+Http.json:lista
