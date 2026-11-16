@@ -2,7 +2,7 @@
 // Cada endereço público tem duas faces: tela (HTML) e agente (JSON, quando o pedido manda Accept: application/json).
 
 // ---- site público (cache de 10 s só para quem não manda Cookie nem Authorization)
-Route.get:"/":{"html": "paginas/lista.djo.html", "agent": "agentes/site.djo", "about": "Agente: título, endereço e contagens do site", "returns": "Map", "cache": 10}
+Route.get:"/":{"html": "paginas/home.djo.html", "agent": "agentes/site.djo", "about": "Agente: título, endereço e contagens do site", "returns": "Map", "cache": 10}
 Route.get:"/blog":{"html": "paginas/lista.djo.html", "agent": "agentes/lista.djo", "about": "Lista conteúdos. Sem token só o publicado; com token também rascunhos. Filtros: tipo (post|page), status, tag, q, pagina, por, texto=1 (traz o corpo)", "returns": ["Conteudo"], "cache": 10}
 Route.get:"/blog/{slug}":{"html": "paginas/conteudo.djo.html", "agent": "agentes/conteudo.djo", "about": "Um post, com o texto em Markdown. Com token, também rascunhos (slug ou id)", "returns": "Conteudo", "cache": 10}
 Route.get:"/tag/{slug}":{"html": "paginas/lista.djo.html", "agent": "agentes/lista.djo", "about": "Posts de uma tag", "returns": ["Conteudo"], "cache": 10}
@@ -45,3 +45,4 @@ Route.get:"/admin/tokens":"admin/tokens.djo.html"
 Route.post:"/admin/tokens":"admin/tokens.djo.html"
 Route.get:"/admin/config":"admin/config.djo.html"
 Route.post:"/admin/config":"admin/config.djo.html"
+

@@ -1,0 +1,4 @@
+{% abrir: %}
+{% if{ cond[not (instalado:)] %}{% Http.redirect:"/instalar" %}{% } %}
+{% var pag_titulo = "" %}
+{% var pag_desc = "" %}

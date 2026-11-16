@@ -9,12 +9,15 @@
 <meta name="description" content="{{ pick[pag_desc != "" ; pag_desc ; cfg["descricao"]] }}">
 <link rel="stylesheet" href="/assets/estilo.css">
 <link rel="alternate" type="application/rss+xml" title="{{ cfg["titulo"] }}" href="/feed.xml">
+<link rel="stylesheet" type="text/css" href="/assets/main.css">
 </head>
 <body>
 <header class="topo"><div class="miolo">
   <a class="marca" href="/">{{ cfg["titulo"] }}</a>
   <nav>
+    <a href="/#sobre">Sobre</a>
     <a href="/blog">Blog</a>
+    <a href="/#contato">Contato</a>
     {% for{ each[m in menu] %}<a href="/{{ m["slug"] }}">{{ m["titulo"] }}</a>{% } %}
     {% if{ cond[usuario_atual: != nil] %}<a href="/admin">Painel</a>{% } %}
   </nav>
