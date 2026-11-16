@@ -46,4 +46,4 @@ curl -H "Accept: application/json" -H "Authorization: Bearer $TOKEN" "$SITE/blog
 3. A resposta traz a `url` do conteúdo: confira o resultado lendo de volta.
 4. `alterar` mexe só no que você enviou; `editar` substitui tudo (o que faltar volta ao padrão).
 5. Horários em UTC. `401` token ausente/inválido, `403` token só de leitura, `404` não existe, `406` rota só de tela, `409` slug em uso, `422` campo inválido, `429` devagar (limite por agente).
-6. Slugs reservados (não use): admin, api, blog, tag, busca, uploads, assets, instalar, entrar, sair, feed, sitemap, robots.
+6. Slugs reservados (não use): admin, api, blog, tag, busca, uploads, assets, instalar, entrar, sair, ask, feed, sitemap, robots.

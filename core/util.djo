@@ -34,7 +34,7 @@ f rfc822
 
 // slugs que colidiriam com rotas do sistema
 f reservados
-    return ["admin", "api", "blog", "tag", "busca", "uploads", "assets", "instalar", "entrar", "sair", "feed", "sitemap", "robots", "feed.xml", "sitemap.xml", "robots.txt"]
+    return ["admin", "api", "blog", "tag", "busca", "uploads", "assets", "instalar", "entrar", "sair", "ask", "feed", "sitemap", "robots", "feed.xml", "sitemap.xml", "robots.txt"]
 
 f slug_valido
     params[s[String]]

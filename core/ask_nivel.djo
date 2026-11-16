@@ -1,0 +1,10 @@
+// Nível de acesso do /ask (ask.djo: Ask.level_from:"nivel_ask"). Decidido ANTES de ler a pergunta.
+// Quem está logado no painel ou manda token de escrita = admin; token de leitura = agent; sem nada = public (nil).
+// Token enviado mas inválido ou revogado = nil, e o /ask responde 401.
+f nivel_ask
+    abrir:
+    if{ cond[usuario_atual: != nil] return "admin" }
+    var t = token_atual:
+    if{ cond[t == nil] return nil }
+    if{ cond[t["escopo"] == "escrita"] return "admin" }
+    return "agent"

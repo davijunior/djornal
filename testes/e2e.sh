@@ -5,7 +5,7 @@ set -u
 DJO="${1:-${DJO:-djo}}"
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d)"; PORT=$((18000 + RANDOM % 1000)); B="localhost:$PORT"
-cp -r "$RAIZ"/{core,paginas,agentes,admin,publico,uploads,rotas.djo,404.djo.html} "$TMP"/
+cp -r "$RAIZ"/{core,paginas,agentes,admin,publico,uploads,rotas.djo,404.djo.html,ask.djo} "$TMP"/
 cd "$TMP"; "$DJO" serve -dev -addr "127.0.0.1:$PORT" . >log.txt 2>&1 & PID=$!
 trap 'kill $PID 2>/dev/null; rm -rf "$TMP"' EXIT
 for i in $(seq 40); do curl -s -o /dev/null "$B/robots.txt" && break; sleep 0.1; done
@@ -102,6 +102,24 @@ t "listar mídia" "teste" "$(curl -s -H "$H" $B/api/midia)"
 
 printf %s '{"conteudo":{"titulo":"g","texto":"' > "$TMP/g.json"; head -c 100001 /dev/zero | tr '\0' x >> "$TMP/g.json"; printf %s '"}}' >> "$TMP/g.json"
 t "texto grande é recusado" "muito grande" "$(curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d @"$TMP/g.json")"
+
+echo "-- /ask (perguntas em linguagem natural, só leitura)"
+ASK() { curl -s -XPOST $B/ask -H "$CT" "$@"; }
+curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"Rascunho do ask","texto":"x","tags":["ask-interno"]}}' >/dev/null
+curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"Agendado do ask","texto":"x","status":"published","publicar_em":"2099-01-01 10:00","tags":["ask-futuro"]}}' >/dev/null
+t "GET /ask é a página com a caixa" "<form" "$(curl -s $B/ask)"
+t "/ask lista posts publicados" '"Bem-vindo"' "$(ASK -d '{"question":"liste posts"}')"
+t "/ask público não vê rascunho" '"count":0' "$(ASK -d '{"question":"quantos posts tem a tag ask-interno?"}')"
+t "/ask público não vê agendado" '"count":0' "$(ASK -d '{"question":"quantos posts tem a tag ask-futuro?"}')"
+t "/ask público não filtra por status" "Não entendi" "$(ASK -d '{"question":"liste posts com status draft"}')"
+t "/ask com token de leitura vê rascunho" '"Rascunho do ask"' "$(ASK -H "Authorization: Bearer $RO" -d '{"question":"liste posts com status draft"}')"
+t "/ask logado no painel vê rascunho" '"Rascunho do ask"' "$(ASK -b $J -d '{"question":"liste posts com status draft"}')"
+t "/ask com token inválido = 401" "401" "$(code -XPOST $B/ask -H "$CT" -H 'Authorization: Bearer cms_invalido' -d '{"question":"liste posts"}')"
+t "/ask recusa escrita mesmo com token de escrita" "403" "$(code -XPOST $B/ask -H "$CT" -H "$H" -d '{"question":"apague os posts"}')"
+t "/ask não responde a GET ?q=" "0" "$(curl -s "$B/ask?q=liste+posts" | grep -c 'Bem-vindo')"
+t "ask.djo não é servido" "404" "$(code $B/ask.djo)"
+t "/ask fora do manifesto" "0" "$(curl -s $B/.well-known/ai-manifest.json | grep -c '"/ask')"
+t "slug 'ask' é reservado" "reservado" "$(curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"x","slug":"ask"}}')"
 
 echo "-- segurança"
 curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"xss","texto":"[a](javascript:alert(1)) <img src=x onerror=alert(1)>","status":"published"}}' >/dev/null

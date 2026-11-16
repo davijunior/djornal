@@ -1,0 +1,52 @@
+// Política do /ask: perguntas em linguagem natural (PT/EN) sobre o conteúdo, só leitura.
+// Sem este arquivo o /ask não existe. Ele nunca é servido. Veja docs/ask.md no repositório do djo.
+// As tabelas são visões criadas em core/banco.djo (criar_views_ask), que não têm senha, hash nem token.
+Ask.db:"_dados/cms.db"
+Ask.level_from:"nivel_ask"
+
+Ask.type:"post":{"table": "ask_posts", "fields": {
+    "title": {"column": "titulo", "kind": "text"},
+    "slug": {"kind": "text"},
+    "summary": {"column": "resumo", "kind": "text"},
+    "status": {"kind": "enum", "values": ["draft", "published"]},
+    "live": {"column": "ao_vivo", "kind": "bool"},
+    "published_at": {"column": "publicar_em", "kind": "datetime", "as": "epoch", "main": true},
+    "created_at": {"column": "criado", "kind": "datetime", "as": "epoch"},
+    "updated_at": {"column": "atualizado", "kind": "datetime", "as": "epoch"},
+    "author": {"column": "autor", "kind": "text"},
+    "tags": {"kind": "tags", "from": "ask_conteudo_tags", "key": "conteudo_id", "value": "tag"}
+}}
+Ask.type:"page":{"table": "ask_paginas", "fields": {
+    "title": {"column": "titulo", "kind": "text"},
+    "slug": {"kind": "text"},
+    "summary": {"column": "resumo", "kind": "text"},
+    "status": {"kind": "enum", "values": ["draft", "published"]},
+    "live": {"column": "ao_vivo", "kind": "bool"},
+    "published_at": {"column": "publicar_em", "kind": "datetime", "as": "epoch", "main": true},
+    "created_at": {"column": "criado", "kind": "datetime", "as": "epoch"},
+    "updated_at": {"column": "atualizado", "kind": "datetime", "as": "epoch"},
+    "author": {"column": "autor", "kind": "text"},
+    "tags": {"kind": "tags", "from": "ask_conteudo_tags", "key": "conteudo_id", "value": "tag"}
+}}
+
+// Público: só o que está no ar (publicado e com a data já passada), sem status nem datas internas.
+Ask.level:"public":{"allow": [
+    {"type": "post", "where": {"live": true}, "fields": ["title", "slug", "summary", "published_at", "author", "tags"]},
+    {"type": "page", "where": {"live": true}, "fields": ["title", "slug", "summary", "published_at", "author", "tags"]}
+]}
+// Token de leitura (e, por herança, escrita/painel): rascunhos e agendados também.
+Ask.level:"agent":{"allow": [
+    {"type": "post", "fields": ["title", "slug", "summary", "status", "live", "published_at", "created_at", "updated_at", "author", "tags"]},
+    {"type": "page", "fields": ["title", "slug", "summary", "status", "live", "published_at", "created_at", "updated_at", "author", "tags"]}
+]}
+
+Ask.alias:"post":["posts", "artigos", "artigo"]
+Ask.alias:"page":["pages", "paginas", "páginas", "pagina", "página"]
+Ask.alias:"post.summary":["resumo"]
+Ask.alias:"page.summary":["resumo"]
+Ask.alias:"post.live":["no ar"]
+Ask.alias:"page.live":["no ar"]
+Ask.alias:"post.slug":["endereco", "endereço"]
+Ask.alias:"page.slug":["endereco", "endereço"]
+
+Ask.limits:{"max_results": 50, "timeout_ms": 3000, "per_minute": 30}

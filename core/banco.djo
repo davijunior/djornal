@@ -5,6 +5,16 @@ f abrir
     Db.open:"_dados/cms.db"
     var t = Db.one:"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'config'"
     if{ cond[t == nil] migrar: }
+    var v = Db.one:"SELECT name FROM sqlite_master WHERE type = 'view' AND name = 'ask_posts'"
+    if{ cond[v == nil] criar_views_ask: }
+
+// Visões que o /ask lê (ask.djo). Só expõem colunas seguras: nada de usuarios.senha nem tokens.
+// ao_vivo = publicado e com publicar_em já passado (agendados ficam de fora do público).
+f criar_views_ask
+    var cols = "c.id, c.titulo, c.slug, c.resumo, c.texto, c.status, c.publicar_em, c.criado, c.atualizado, u.nome AS autor, CASE WHEN c.status = 'published' AND c.publicar_em > 0 AND c.publicar_em <= CAST(strftime('%s', 'now') AS INTEGER) THEN 1 ELSE 0 END AS ao_vivo"
+    Db.exec:"CREATE VIEW IF NOT EXISTS ask_posts AS SELECT " + cols + " FROM conteudos c LEFT JOIN usuarios u ON u.id = c.autor_id WHERE c.tipo = 'post'"
+    Db.exec:"CREATE VIEW IF NOT EXISTS ask_paginas AS SELECT " + cols + " FROM conteudos c LEFT JOIN usuarios u ON u.id = c.autor_id WHERE c.tipo = 'page'"
+    Db.exec:"CREATE VIEW IF NOT EXISTS ask_conteudo_tags AS SELECT ct.conteudo_id, t.nome AS tag FROM conteudo_tags ct JOIN tags t ON t.id = ct.tag_id"
 
 f migrar
     Db.exec:"CREATE TABLE IF NOT EXISTS config (chave TEXT PRIMARY KEY, valor TEXT)"
