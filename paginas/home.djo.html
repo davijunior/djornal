@@ -1,38 +1,91 @@
 {% include:"paginas/_headers.djo.html" %}
 {% var pag_titulo = "" %}
 {% var pag_desc = "Portfólio de Davi Martimiano: desenvolvedor fullstack." %}
+{% var sobre = obter:"sobre":"page":false:false %}
 {% var recentes = consulta:"post":"":"":"":false:1:3:false %}
 {% include:"paginas/_topo.djo.html" %}
-<section class="hero" id="inicio">
-  <p class="hero-oi">Olá, eu sou</p>
-  <h1>Davi <span class="verde">Martimiano</span></h1>
-  <p class="hero-sub">Desenvolvedor fullstack. Construo sites, sistemas e ferramentas do banco de dados à tela.</p>
-  <p class="hero-acoes">
-    <a class="botao" href="#contato">Vamos conversar</a>
-    <a class="botao botao-vazio" href="/blog">Ler o blog</a>
-  </p>
-</section>
 
-<section class="secao" id="sobre">
-  <h2 class="secao-titulo">Sobre</h2>
-  <div class="sobre">
-    <p>Sou programador fullstack e gosto de entender um produto inteiro: modelar os dados, escrever a regra de negócio e cuidar da interface que a pessoa vai usar.</p>
-    <p>Este portfólio roda em <strong>djo</strong>, a linguagem que uso nos meus projetos, sobre um CMS que também fala com agentes de IA em JSON.</p>
-    <ul class="selos">
-      <li>djo</li><li>Go</li><li>SQL</li><li>HTML &amp; CSS</li><li>APIs</li><li>Git</li>
-    </ul>
+<section class="hero" id="inicio">
+  <div class="hero-texto">
+    <p class="hero-oi"><span class="ponto"></span> disponível para novos projetos</p>
+    <h1>Davi<br><span class="verde">Martimiano Junior</span></h1>
+    <p class="hero-sub">Desenvolvedor <strong>fullstack</strong>. Do banco de dados à tela, construo sistemas com astúcia, precisão e um pouco de ambição.</p>
+    <p class="hero-acoes">
+      <a class="botao" href="#contato">Vamos conversar <span aria-hidden="true">→</span></a>
+      <a class="botao botao-vazio" href="/blog">Ler o blog</a>
+    </p>
+  </div>
+
+  <div class="hero-arte" aria-hidden="true">
+    <svg class="emblema" viewBox="0 0 400 400">
+      <defs>
+        <linearGradient id="gv" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ecc71"/><stop offset="1" stop-color="#c0c8c4"/></linearGradient>
+      </defs>
+      <g class="aneis" fill="none" stroke="url(#gv)">
+        <circle cx="200" cy="200" r="190" stroke-width="1" stroke-dasharray="2 10"/>
+        <circle cx="200" cy="200" r="160" stroke-width="1.5" opacity=".5"/>
+        <circle cx="200" cy="200" r="130" stroke-width="1" stroke-dasharray="40 14" opacity=".6"/>
+      </g>
+      <path class="serpente" d="M138 302 C 134 240, 140 160, 138 100 C 350 64, 390 310, 172 302" fill="none" stroke="url(#gv)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle class="olho" cx="179" cy="296" r="5" fill="#03100a"/>
+    </svg>
+
+    <div class="janela">
+      <div class="janela-barra"><i></i><i></i><i></i><span>apresentar.djo</span></div>
+<pre><code><span class="c">// quem sou eu, em djo</span>
+<span class="k">f</span> <span class="n">apresentar</span>
+    <span class="k">params</span>[nome[<span class="t">String</span>]]
+    <span class="k">return</span> <span class="s">"Olá, eu sou "</span> + nome
+
+<span class="k">var</span> eu = <span class="n">apresentar</span>:<span class="s">"Davi"</span>
+<span class="c">// fullstack, sem atalhos</span></code></pre>
+    </div>
   </div>
 </section>
 
-<section class="secao" id="blog">
-  <h2 class="secao-titulo">Blog</h2>
+<div class="faixa" aria-hidden="true">
+  <div class="faixa-trilho">
+    <span>Fullstack</span><span>Frontend</span><span>Backend</span><span>APIs</span><span>Banco de dados</span><span>djo</span><span>Agentes de IA</span><span>Design de sistemas</span>
+    <span>Fullstack</span><span>Frontend</span><span>Backend</span><span>APIs</span><span>Banco de dados</span><span>djo</span><span>Agentes de IA</span><span>Design de sistemas</span>
+  </div>
+</div>
+
+<section class="secao revelar" id="sobre">
+  <p class="rotulo">01 / sobre</p>
+  <h2 class="secao-titulo">Quem constrói isto aqui</h2>
+  <div class="sobre-grade">
+    <div class="sobre">
+    {% if{ cond[sobre != nil] %}
+      <div class="texto capitular">{{! html_de:sobre.id }}</div>
+      {% if{ cond[usuario_atual: != nil] %}<p class="editar"><a href="/admin/conteudos/{{ sobre.id }}">Editar este texto no painel</a></p>{% } %}
+    {% } else{ %}
+      <p class="vazio">Crie uma página com o endereço <code>sobre</code> em Painel → Conteúdos para o texto aparecer aqui.</p>
+    {% } %}
+    </div>
+    <aside class="ficha">
+      <h3>Ficha</h3>
+      <dl>
+        <dt>Função</dt><dd>Desenvolvedor fullstack</dd>
+        <dt>Linguagem</dt><dd>djo, PHP, Ruby, JS, entre outras</dd>
+        <dt>Foco</dt><dd>Desenvolvimento Web e Mobile</dd>
+        <dt>Rede</dt><dd><a href="https://www.linkedin.com/in/davimartimiano" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a></dd>
+      </dl>
+    </aside>
+  </div>
+</section>
+
+<section class="secao revelar" id="blog">
+  <p class="rotulo">02 / blog</p>
+  <h2 class="secao-titulo">Anotações do ofício</h2>
   <div class="grade">
   {% for{ each[c in recentes["itens"]] %}
     <article class="cartao-post">
+      <span class="indice"></span>
       <p class="meta">{{ data_br:(ler_data:c.publicar_em) }}</p>
       <h3><a href="{{ caminho_de:c.tipo:c.slug }}">{{ c.titulo }}</a></h3>
-      <p>{{ c.resumo }}</p>
+      <p class="resumo">{{ c.resumo }}</p>
       <p class="tags">{% for{ each[t in c.tags] %}<a href="/tag/{{ slug:t }}">#{{ t }}</a> {% } %}</p>
+      <a class="ler" href="{{ caminho_de:c.tipo:c.slug }}">Ler →</a>
     </article>
   {% } %}
   </div>
@@ -40,11 +93,12 @@
   <p><a class="link-seta" href="/blog">Ver todos os textos →</a></p>
 </section>
 
-<section class="secao" id="contato">
-  <h2 class="secao-titulo">Contato</h2>
-  <div class="contato">
-    <p>Tem um projeto, uma vaga ou só quer trocar ideia? Me chame pelo LinkedIn.</p>
-    <p><a class="botao" href="https://www.linkedin.com/in/davimartimiano" target="_blank" rel="noopener noreferrer">linkedin.com/in/davimartimiano</a></p>
+<section class="secao revelar" id="contato">
+  <div class="chamada">
+    <p class="rotulo">03 / contato</p>
+    <h2>Tem um projeto em mente?<br><span class="verde">Vamos construir.</span></h2>
+    <p>Vaga, freelance ou só uma boa conversa sobre código. A resposta mais rápida vem pelo LinkedIn.</p>
+    <p><a class="botao" href="https://www.linkedin.com/in/davimartimiano" target="_blank" rel="noopener noreferrer">Falar no LinkedIn ↗</a></p>
   </div>
 </section>
 {% include:"paginas/_rodape.djo.html" %}

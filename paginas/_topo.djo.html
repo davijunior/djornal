@@ -15,7 +15,6 @@
 <header class="topo"><div class="miolo">
   <a class="marca" href="/">{{ cfg["titulo"] }}</a>
   <nav>
-    <a href="/#sobre">Sobre</a>
     <a href="/blog">Blog</a>
     <a href="/#contato">Contato</a>
     {% for{ each[m in menu] %}<a href="/{{ m["slug"] }}">{{ m["titulo"] }}</a>{% } %}
