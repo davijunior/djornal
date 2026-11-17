@@ -109,6 +109,10 @@ curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"Rascu
 curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"Agendado do ask","texto":"x","status":"published","publicar_em":"2099-01-01 10:00","tags":["ask-futuro"]}}' >/dev/null
 t "GET /ask é a página com a caixa" "<form" "$(curl -s $B/ask)"
 t "/ask lista posts publicados" '"Bem-vindo"' "$(ASK -d '{"question":"liste posts"}')"
+t "/ask lista não traz o texto" "0" "$(ASK -d '{"question":"liste posts"}' | grep -c '"text"')"
+t "/ask um item traz o texto inteiro" "Para agentes" "$(ASK -d '{"question":"mostre o post bem-vindo"}')"
+t "/ask item de rascunho = não encontrei (público)" "Não encontrei" "$(ASK -d '{"question":"mostre o post \"rascunho-do-ask\""}')"
+t "/ask item de rascunho com token de leitura" '"Rascunho do ask"' "$(ASK -H "Authorization: Bearer $RO" -d '{"question":"mostre o post \"rascunho-do-ask\""}')"
 t "/ask público não vê rascunho" '"count":0' "$(ASK -d '{"question":"quantos posts tem a tag ask-interno?"}')"
 t "/ask público não vê agendado" '"count":0' "$(ASK -d '{"question":"quantos posts tem a tag ask-futuro?"}')"
 t "/ask público não filtra por status" "Não entendi" "$(ASK -d '{"question":"liste posts com status draft"}')"

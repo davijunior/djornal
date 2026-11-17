@@ -4,10 +4,11 @@
 Ask.db:"_dados/cms.db"
 Ask.level_from:"nivel_ask"
 
-Ask.type:"post":{"table": "ask_posts", "fields": {
+Ask.type:"post":{"table": "ask_posts", "show_by": ["slug", "title"], "fields": {
     "title": {"column": "titulo", "kind": "text"},
     "slug": {"kind": "text"},
     "summary": {"column": "resumo", "kind": "text"},
+    "text": {"column": "texto", "kind": "text", "detail": true},
     "status": {"kind": "enum", "values": ["draft", "published"]},
     "live": {"column": "ao_vivo", "kind": "bool"},
     "published_at": {"column": "publicar_em", "kind": "datetime", "as": "epoch", "main": true},
@@ -16,10 +17,11 @@ Ask.type:"post":{"table": "ask_posts", "fields": {
     "author": {"column": "autor", "kind": "text"},
     "tags": {"kind": "tags", "from": "ask_conteudo_tags", "key": "conteudo_id", "value": "tag"}
 }}
-Ask.type:"page":{"table": "ask_paginas", "fields": {
+Ask.type:"page":{"table": "ask_paginas", "show_by": ["slug", "title"], "fields": {
     "title": {"column": "titulo", "kind": "text"},
     "slug": {"kind": "text"},
     "summary": {"column": "resumo", "kind": "text"},
+    "text": {"column": "texto", "kind": "text", "detail": true},
     "status": {"kind": "enum", "values": ["draft", "published"]},
     "live": {"column": "ao_vivo", "kind": "bool"},
     "published_at": {"column": "publicar_em", "kind": "datetime", "as": "epoch", "main": true},
@@ -29,15 +31,16 @@ Ask.type:"page":{"table": "ask_paginas", "fields": {
     "tags": {"kind": "tags", "from": "ask_conteudo_tags", "key": "conteudo_id", "value": "tag"}
 }}
 
+// "text" (o corpo em Markdown) é detail: nunca sai em listas, só ao pedir um item ("mostre o post bem-vindo").
 // Público: só o que está no ar (publicado e com a data já passada), sem status nem datas internas.
 Ask.level:"public":{"allow": [
-    {"type": "post", "where": {"live": true}, "fields": ["title", "slug", "summary", "published_at", "author", "tags"]},
-    {"type": "page", "where": {"live": true}, "fields": ["title", "slug", "summary", "published_at", "author", "tags"]}
+    {"type": "post", "where": {"live": true}, "fields": ["title", "slug", "summary", "published_at", "author", "tags", "text"]},
+    {"type": "page", "where": {"live": true}, "fields": ["title", "slug", "summary", "published_at", "author", "tags", "text"]}
 ]}
 // Token de leitura (e, por herança, escrita/painel): rascunhos e agendados também.
 Ask.level:"agent":{"allow": [
-    {"type": "post", "fields": ["title", "slug", "summary", "status", "live", "published_at", "created_at", "updated_at", "author", "tags"]},
-    {"type": "page", "fields": ["title", "slug", "summary", "status", "live", "published_at", "created_at", "updated_at", "author", "tags"]}
+    {"type": "post", "fields": ["title", "slug", "summary", "status", "live", "published_at", "created_at", "updated_at", "author", "tags", "text"]},
+    {"type": "page", "fields": ["title", "slug", "summary", "status", "live", "published_at", "created_at", "updated_at", "author", "tags", "text"]}
 ]}
 
 Ask.alias:"post":["posts", "artigos", "artigo"]
