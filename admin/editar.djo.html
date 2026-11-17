@@ -36,6 +36,11 @@
 <form method="post" class="editor">
   <input type="hidden" name="_token" value="{{ Session.token: }}">
   <input class="titulao" name="titulo" value="{{ v["titulo"] }}" placeholder="Título" required>
+  <div class="barra-editor">
+    <button type="button" class="btn sec" id="btn-imagem">🖼 Inserir imagem</button>
+    <small>ou cole/arraste uma imagem no texto</small>
+    <span id="envio-status" role="status"></span>
+  </div>
   <div class="duas">
     <textarea id="texto" name="texto" rows="24" placeholder="Escreva em Markdown…">{{ v["texto"] }}</textarea>
     <div id="previa" class="texto previa" hidden></div>
@@ -55,7 +60,71 @@
     {% if{ cond[v["status"] != "published"] %}<button class="btn ok" name="acao" value="publicar">Salvar e publicar</button>{% } %}
   </p>
 </form>
+<dialog id="dlg-imagem" class="dlg-imagem">
+  <form method="dialog" class="dlg-topo"><strong>Inserir imagem</strong><button class="btn sec" aria-label="Fechar">✕</button></form>
+  <div class="dlg-envio">
+    <input type="file" id="img-arquivo" accept="image/png,image/jpeg,image/gif,image/webp,image/avif">
+    <input id="img-alt" placeholder="Texto alternativo (descreva a imagem)">
+    <button type="button" class="btn" id="img-enviar">Enviar e inserir</button>
+  </div>
+  <p><small>Ou escolha uma já enviada:</small></p>
+  <div id="img-galeria" class="midias galeria"></div>
+</dialog>
 <script>
+(function () {
+  const ta = document.getElementById('texto'), dlg = document.getElementById('dlg-imagem');
+  const st = document.getElementById('envio-status'), tok = document.querySelector('[name=_token]').value;
+  const altLimpo = s => (s || '').replace(/[\[\]\r\n]/g, ' ').trim();
+  function inserir(md, selecionar) {
+    const a = ta.selectionStart, b = ta.selectionEnd, antes = ta.value.slice(0, a);
+    const pre = antes === '' || antes.endsWith('\n\n') ? '' : (antes.endsWith('\n') ? '\n' : '\n\n');
+    ta.setRangeText(pre + md + '\n\n', a, b, 'end');
+    if (selecionar) { const i = a + pre.length + 2; ta.setSelectionRange(i, i + selecionar.length); }
+    ta.focus();
+  }
+  async function enviar(arq, alt) {
+    const f = new FormData();
+    f.set('_token', tok); f.set('arquivo', arq); f.set('alt', alt);
+    st.textContent = 'Enviando ' + arq.name + '…';
+    try {
+      const r = await fetch('/admin/midia/enviar', {method: 'POST', body: f}), j = await r.json();
+      if (!r.ok) throw new Error(j.erro || ('erro ' + r.status));
+      st.textContent = ''; return j;
+    } catch (e) { st.textContent = 'Não enviou: ' + e.message; return null; }
+  }
+  async function enviarSoltas(arqs) {
+    for (const arq of arqs) {
+      if (!arq.type.startsWith('image/')) continue;
+      const j = await enviar(arq, '');
+      if (j) inserir('![descreva a imagem](' + j.url + ')', 'descreva a imagem');
+    }
+  }
+  document.getElementById('btn-imagem').onclick = async function () {
+    const g = document.getElementById('img-galeria');
+    g.textContent = 'Carregando…'; dlg.showModal();
+    try {
+      const j = await (await fetch('/admin/midia/imagens')).json();
+      g.textContent = j.imagens.length ? '' : 'Nenhuma imagem ainda.';
+      for (const m of j.imagens) {
+        const bt = document.createElement('button'), im = document.createElement('img');
+        bt.type = 'button'; bt.title = m.alt || m.titulo; im.src = m.url; im.alt = m.alt || ''; im.loading = 'lazy';
+        bt.appendChild(im);
+        bt.onclick = () => { dlg.close(); inserir('![' + altLimpo(m.alt) + '](' + m.url + ')'); };
+        g.appendChild(bt);
+      }
+    } catch (e) { g.textContent = 'Não carregou a lista.'; }
+  };
+  document.getElementById('img-enviar').onclick = async function () {
+    const arq = document.getElementById('img-arquivo').files[0], alt = altLimpo(document.getElementById('img-alt').value);
+    if (!arq) { st.textContent = 'Escolha um arquivo.'; return; }
+    dlg.close();
+    const j = await enviar(arq, alt);
+    if (j) { inserir('![' + alt + '](' + j.url + ')'); document.getElementById('img-arquivo').value = ''; document.getElementById('img-alt').value = ''; }
+  };
+  ta.addEventListener('paste', e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); enviarSoltas(fs); } });
+  ta.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault(); });
+  ta.addEventListener('drop', e => { const fs = [...(e.dataTransfer?.files || [])]; if (fs.length) { e.preventDefault(); enviarSoltas(fs); } });
+})();
 document.getElementById('btn-previa').onclick = async function () {
   const box = document.getElementById('previa'), f = new URLSearchParams();
   f.set('_token', document.querySelector('[name=_token]').value);

@@ -20,3 +20,7 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem}
 .lateral{max-width:560px}.check{display:flex;gap:8px;align-items:center}.check input{width:auto;margin:0}
 .midias{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}.midias img{width:100%;height:130px;object-fit:cover;border-radius:8px}.midias figcaption{font-size:.7rem;word-break:break-all}.arq{font-size:3rem;text-align:center}
 small{color:var(--mudo)}
+.barra-editor{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}#envio-status{font-size:.85rem}
+.dlg-imagem{max-width:760px;width:calc(100% - 32px);border:1px solid var(--linha);border-radius:12px;background:var(--cartao);color:var(--fg)}.dlg-imagem::backdrop{background:rgba(0,0,0,.5)}
+.dlg-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dlg-envio{display:flex;gap:8px;flex-wrap:wrap}.dlg-envio input{flex:1 1 200px}
+.galeria{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));max-height:50vh;overflow:auto}.galeria button{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer}.galeria button:hover,.galeria button:focus{border-color:var(--acento)}.galeria img{height:100px}

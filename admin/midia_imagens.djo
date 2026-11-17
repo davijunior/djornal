@@ -1,0 +1,10 @@
+// GET /admin/midia/imagens: as imagens já enviadas, para escolher no editor. Responde JSON.
+abrir:
+if{ cond[usuario_atual: == nil]
+    Http.json:{"erro": "entre no painel de novo"}:401
+    return
+}
+var itens = []
+var linhas = Db.query:"SELECT * FROM midias WHERE lower(arquivo) LIKE '%.png' OR lower(arquivo) LIKE '%.jpg' OR lower(arquivo) LIKE '%.jpeg' OR lower(arquivo) LIKE '%.gif' OR lower(arquivo) LIKE '%.webp' OR lower(arquivo) LIKE '%.avif' ORDER BY id DESC LIMIT 60"
+for{ each[m in linhas] push:itens:(midia_json:m:"") }
+Http.json:{"imagens": itens}

@@ -1,0 +1,16 @@
+// POST /admin/midia/enviar: upload pelo editor (sessão do painel + _token do CSRF). Responde JSON.
+abrir:
+if{ cond[usuario_atual: == nil]
+    Http.json:{"erro": "entre no painel de novo"}:401
+    return
+}
+if{ cond[not (csrf_ok:)]
+    Http.json:{"erro": "token de segurança inválido: recarregue a página"}:403
+    return
+}
+var r = guardar_upload:"arquivo":(Http.form:"titulo" ?? ""):(Http.form:"alt" ?? ""):((usuario_atual:)["id"])
+if{ cond[has:r:"erro"]
+    Http.json:{"erro": r["erro"]}:(r["status"])
+    return
+}
+Http.json:(midia_json:(r["midia"]):""):201

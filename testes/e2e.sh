@@ -99,6 +99,13 @@ t "upload via API" "/uploads/" "$(curl -s -XPOST $B/api/midia -H "$H" -F arquivo
 echo '<script>' > "$TMP/x.html"
 t "upload .html é recusado" "não aceito" "$(curl -s -XPOST $B/api/midia -H "$H" -F arquivo=@"$TMP/x.html")"
 t "listar mídia" "teste" "$(curl -s -H "$H" $B/api/midia)"
+t "editor tem o botão de imagem" "Inserir imagem" "$(curl -s -b $J $B/admin/conteudos/novo)"
+t "editor envia imagem (sessão + CSRF)" '"markdown"' "$(curl -s -b $J $B/admin/midia/enviar -F "_token=$CSRF" -F arquivo=@"$TMP/f.png" -F alt=capa)"
+t "editor: upload sem CSRF = 403" "403" "$(code -b $J $B/admin/midia/enviar -F arquivo=@"$TMP/f.png")"
+t "editor: upload sem login = 401" "401" "$(code $B/admin/midia/enviar -F "_token=$CSRF" -F arquivo=@"$TMP/f.png")"
+t "editor: .html é recusado" "não aceito" "$(curl -s -b $J $B/admin/midia/enviar -F "_token=$CSRF" -F arquivo=@"$TMP/x.html")"
+t "editor lista só imagens" '"capa"' "$(curl -s -b $J $B/admin/midia/imagens)"
+t "editor: lista sem login = 401" "401" "$(code $B/admin/midia/imagens)"
 
 printf %s '{"conteudo":{"titulo":"g","texto":"' > "$TMP/g.json"; head -c 100001 /dev/zero | tr '\0' x >> "$TMP/g.json"; printf %s '"}}' >> "$TMP/g.json"
 t "texto grande é recusado" "muito grande" "$(curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d @"$TMP/g.json")"
