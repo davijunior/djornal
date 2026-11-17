@@ -35,7 +35,7 @@ Cada site é uma cópia deste repositório: o código e os dados convivem na mes
 
 Guia para entregar a um agente: [AGENTS.md](AGENTS.md).
 
-**Perguntas em linguagem natural (`/ask`).** Pessoas podem perguntar ao site em português ou inglês, sem modelo de IA: abra `/ask` no navegador ou use `djo ask https://seu-site "liste posts de 2025 com a tag novidade"` (precisa da djo v0.6.0 ou mais nova). É só leitura. Sem login ou token aparece só o que está no ar; com token (`DJO_ASK_TOKEN`) ou logado no painel, também rascunhos e agendados. O que pode ser perguntado está em [ask.djo](ask.djo), que lê visões do banco sem senhas nem tokens (criadas em `core/banco.djo`). Para desligar, apague o `ask.djo`.
+**Perguntas em linguagem natural (`/ask`).** Pessoas podem perguntar ao site em português ou inglês, sem modelo de IA: abra `/ask` no navegador ou use `djo ask https://seu-site "liste posts de 2025 com a tag novidade"` (precisa da djo v0.7.0 ou mais nova). É só leitura. Sem login ou token aparece só o que está no ar; com token (`DJO_ASK_TOKEN`) ou logado no painel, também rascunhos e agendados. O que pode ser perguntado está em [ask.djo](ask.djo), que lê visões do banco sem senhas nem tokens (criadas em `core/banco.djo`). Para desligar, apague o `ask.djo`.
 
 ## Documentação
 1. [Instalação](docs/01-instalacao.md)
