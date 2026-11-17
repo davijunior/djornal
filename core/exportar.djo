@@ -1,0 +1,132 @@
+// Exportar e importar conteúdo (posts, páginas, tags e a lista de mídia) num arquivo JSON.
+// Os arquivos de mídia em si não vão no JSON: copie a pasta uploads/ junto (o relatório avisa o que falta).
+
+f exportar_conteudo
+    params[com_rascunhos[Bool]]
+    var onde = ""
+    if{ cond[not com_rascunhos] onde = " WHERE status = 'published'" }
+    var itens = []
+    for{ each[r in Db.query:("SELECT * FROM conteudos" + onde + " ORDER BY id")]
+        push:itens:{"tipo": r["tipo"], "titulo": r["titulo"], "slug": r["slug"], "texto": r["texto"], "resumo": r["resumo"], "status": r["status"], "publicar_em": iso:(r["publicar_em"]), "em_menu": r["em_menu"] == 1, "tags": nomes_tags:(r["id"]), "criado": iso:(r["criado"]), "atualizado": iso:(r["atualizado"])}
+    }
+    var midias = []
+    for{ each[m in Db.query:"SELECT arquivo, titulo, alt FROM midias ORDER BY id"]
+        push:midias:{"arquivo": m["arquivo"], "titulo": m["titulo"] ?? "", "alt": m["alt"] ?? ""}
+    }
+    var cfg = Db.one:"SELECT valor FROM config WHERE chave = 'titulo'"
+    return {"djornal": 1, "exportado_em": iso:(agora:), "site": {"titulo": (cfg ?? {})["valor"] ?? "", "url": base_url:}, "conteudos": itens, "midias": midias}
+
+// texto do campo, ou o padrão se faltar ou não for texto
+f campo_texto
+    params[m, k[String], padrao[String]]
+    if{ cond[(has:m:k) and (is:(m[k]):"String")] return m[k] }
+    return padrao
+
+// caminho de mídia seguro (só dentro de uploads/, sem subir de pasta)
+f midia_segura
+    params[p[String]]
+    return (starts:p:"uploads/") and (not (contains:p:"..")) and (not (contains:p:"\\")) and (len:p < 300)
+
+// imagens e links para /uploads/... citados no Markdown
+f midias_citadas
+    params[texto[String]]
+    var achadas = []
+    var partes = split:texto:"](/uploads/"
+    var i = 1
+    while{
+        cond[i < len:partes]
+        var resto = partes[i]
+        var fim = index:resto:")"
+        if{ cond[fim > 0]
+            var p = "uploads/" + (trim:(split:(slice:resto:0:fim):" ")[0])
+            if{ cond[(midia_segura:p) and (not (contains:achadas:p))] push:achadas:p }
+        }
+        i++
+    }
+    return achadas
+
+// Um item da exportação. Devolve [resultado, nome, mensagem]; resultado = criado|substituido|pulado|erro.
+f importar_item
+    params[c, n[Int], modo[String], simular[Bool], autor_id[Int]]
+    if{ cond[not (is:c:"Map")] return ["erro", "item " + (str:n), "não é um objeto"] }
+    var e = Entrada:(campo_texto:c:"titulo":"")
+    e.texto = campo_texto:c:"texto":""
+    e.slug = trim:(campo_texto:c:"slug":"")
+    e.resumo = campo_texto:c:"resumo":""
+    e.tipo = campo_texto:c:"tipo":"post"
+    e.status = campo_texto:c:"status":"draft"
+    e.publicar_em = campo_texto:c:"publicar_em":""
+    e.em_menu = (c["em_menu"] ?? false) == true
+    if{ cond[is:(c["tags"] ?? nil):"Arr"] e.tags = c["tags"] }
+    var nome = e.titulo
+    if{ cond[e.slug != ""] nome = e.slug }
+    if{ cond[nome == ""] nome = "item " + (str:n) }
+    var existe = nil
+    if{ cond[e.slug != ""] existe = Db.one:"SELECT id FROM conteudos WHERE slug = ?":[slug:e.slug] }
+    if{ cond[(existe != nil) and (modo != "substituir")] return ["pulado", nome, ""] }
+    var res = "criado"
+    var id = 0
+    if{ cond[existe != nil]
+        res = "substituido"
+        id = existe["id"]
+    }
+    if{ cond[simular] return [res, nome, ""] }
+    var r = salvar_conteudo:e:autor_id:id
+    if{ cond[has:r:"erro"] return ["erro", nome, r["erro"]] }
+    var novo = r["conteudo"].id
+    var criado = ler_data:(campo_texto:c:"criado":"")
+    var atualizado = ler_data:(campo_texto:c:"atualizado":"")
+    if{ cond[criado != nil] Db.exec:"UPDATE conteudos SET criado = ? WHERE id = ?":[criado, novo] }
+    if{ cond[atualizado != nil] Db.exec:"UPDATE conteudos SET atualizado = ? WHERE id = ?":[atualizado, novo] }
+    return [res, nome, ""]
+
+// Registra uma mídia da lista se o arquivo já está em uploads/ deste site. Devolve "registrada", "faltando" ou "".
+f importar_midia
+    params[m, simular[Bool], autor_id[Int]]
+    if{ cond[not (is:m:"Map")] return "" }
+    var p = campo_texto:m:"arquivo":""
+    if{ cond[not (midia_segura:p)] return "" }
+    if{ cond[not (File.exists:p)] return "faltando" }
+    if{ cond[simular or (Db.one:"SELECT id FROM midias WHERE arquivo = ?":[p] != nil)] return "" }
+    Db.exec:"INSERT INTO midias (arquivo, titulo, alt, autor_id, criado) VALUES (?, ?, ?, ?, ?)":[p, campo_texto:m:"titulo":"", campo_texto:m:"alt":"", autor_id, agora:]
+    return "registrada"
+
+// Importa o mapa lido do arquivo. modo: "pular" (mantém o que já existe com o mesmo slug) ou "substituir".
+// simular = true: só conta, não grava nada. Devolve um relatório.
+f importar_conteudo
+    params[dados, modo[String], simular[Bool], autor_id[Int]]
+    var rel = {"criados": [], "substituidos": [], "pulados": [], "erros": [], "midias_registradas": 0, "midias_faltando": []}
+    if{ cond[(not (is:dados:"Map")) or (not (has:dados:"djornal")) or (not (is:(dados["conteudos"] ?? nil):"Arr"))]
+        rel["erro"] = "o arquivo não é uma exportação do Djornal (falta \"djornal\" ou \"conteudos\")"
+        return rel
+    }
+    if{ cond[len:(dados["conteudos"]) > 5000]
+        rel["erro"] = "arquivo com mais de 5000 conteúdos: divida em partes"
+        return rel
+    }
+    var n = 0
+    for{ each[c in dados["conteudos"]]
+        n++
+        var r = importar_item:c:n:modo:simular:autor_id
+        if{ cond[r[0] == "criado"] push:(rel["criados"]):(r[1]) }
+        elif{ cond[r[0] == "substituido"] push:(rel["substituidos"]):(r[1]) }
+        elif{ cond[r[0] == "pulado"] push:(rel["pulados"]):(r[1]) }
+        else{ push:(rel["erros"]):(r[1] + ": " + r[2]) }
+    }
+    var faltando = []
+    if{ cond[is:(dados["midias"] ?? nil):"Arr"]
+        for{ each[m in dados["midias"]]
+            var q = importar_midia:m:simular:autor_id
+            if{ cond[q == "registrada"] rel["midias_registradas"] = rel["midias_registradas"] + 1 }
+            if{ cond[(q == "faltando") and (not (contains:faltando:(m["arquivo"])))] push:faltando:(m["arquivo"]) }
+        }
+    }
+    for{ each[c in dados["conteudos"]]
+        if{ cond[is:c:"Map"]
+            for{ each[p in midias_citadas:(campo_texto:c:"texto":"")]
+                if{ cond[(not (File.exists:p)) and (not (contains:faltando:p))] push:faltando:p }
+            }
+        }
+    }
+    rel["midias_faltando"] = faltando
+    return rel

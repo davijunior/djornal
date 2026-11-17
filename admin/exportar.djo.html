@@ -1,0 +1,73 @@
+{% abrir: %}
+{% exigir_admin: %}
+{% var rel = nil %}
+{% var erro = "" %}
+{% var simulado = false %}
+{% if{ cond[Http.method: == "POST"] %}
+  {% exigir_csrf: %}
+  {% var arq = Http.file:"arquivo" %}
+  {% if{ cond[arq == nil] %}{% erro = "Escolha o arquivo .json da exportação." %}
+  {% } elif{ cond[not (ends:(lower:(arq["name"])):".json")] %}{% erro = "O arquivo precisa ser .json (o que o botão Exportar gera)." %}
+  {% } else{ %}
+    {% var caminho = Http.upload:"arquivo":"_dados/importar" %}
+    {% var dados = nil %}
+    {% if{ cond[caminho != nil] %}{% dados = Json.decode:(File.read:caminho ?? "") %}{% File.delete:caminho %}{% } %}
+    {% if{ cond[dados == nil] %}{% erro = "Não consegui ler o arquivo: não é um JSON válido." %}
+    {% } else{ %}
+      {% simulado = (Http.form:"simular" ?? "") == "on" %}
+      {% var modo = pick[(Http.form:"modo" ?? "") == "substituir" ; "substituir" ; "pular"] %}
+      {% rel = importar_conteudo:dados:modo:simulado:((usuario_atual:)["id"]) %}
+      {% if{ cond[has:rel:"erro"] %}{% erro = rel["erro"] %}{% rel = nil %}{% } %}
+    {% } %}
+  {% } %}
+{% } %}
+{% var adm_titulo = "Exportar e importar" %}
+{% var totais = Db.one:"SELECT SUM(tipo = 'post') AS posts, SUM(tipo = 'page') AS paginas, SUM(status = 'draft') AS rascunhos FROM conteudos" %}
+{% include:"admin/_topo.djo.html" %}
+<h1>Exportar e importar</h1>
+{% if{ cond[erro != ""] %}<div class="aviso erro">{{ erro }}</div>{% } %}
+{% if{ cond[rel != nil] %}
+<section class="cartao relatorio">
+  <h2>{{ pick[simulado ; "Simulação (nada foi gravado)" ; "Importação concluída"] }}</h2>
+  <ul>
+    <li><strong>{{ len:(rel["criados"]) }}</strong> {{ pick[simulado ; "seriam criados" ; "criados"] }}</li>
+    <li><strong>{{ len:(rel["substituidos"]) }}</strong> {{ pick[simulado ; "seriam substituídos" ; "substituídos"] }}</li>
+    <li><strong>{{ len:(rel["pulados"]) }}</strong> pulados (já existiam com o mesmo endereço)</li>
+    <li><strong>{{ len:(rel["erros"]) }}</strong> com erro</li>
+    {% if{ cond[not simulado] %}<li><strong>{{ rel["midias_registradas"] }}</strong> arquivos de mídia registrados na página Mídia</li>{% } %}
+  </ul>
+  {% if{ cond[len:(rel["erros"]) > 0] %}<h3>Erros</h3><ul>{% for{ each[x in rel["erros"]] %}<li>{{ x }}</li>{% } %}</ul>{% } %}
+  {% if{ cond[len:(rel["midias_faltando"]) > 0] %}
+    <h3>Arquivos de mídia que faltam neste site</h3>
+    <p>O JSON leva os textos, não os arquivos. Copie estes da pasta <code>uploads/</code> do site de origem para a mesma pasta aqui (depois importe de novo para registrá-los na Mídia):</p>
+    <ul>{% for{ each[p in rel["midias_faltando"]] %}<li><code>{{ p }}</code></li>{% } %}</ul>
+  {% } %}
+</section>
+{% } %}
+
+<section class="cartao">
+  <h2>Exportar</h2>
+  <p>Baixa um arquivo <code>.json</code> com os posts e páginas ({{ totais["posts"] ?? 0 }} posts, {{ totais["paginas"] ?? 0 }} páginas), com texto em Markdown, tags, status e datas, mais a lista de mídia. Usuários, senhas, tokens e configurações não vão.</p>
+  <form method="get" action="/admin/exportar/baixar" class="filtro">
+    <label class="check"><input type="checkbox" name="rascunhos" value="1" checked> Incluir rascunhos e agendados ({{ totais["rascunhos"] ?? 0 }} rascunhos)</label>
+    <button class="btn">Exportar</button>
+  </form>
+</section>
+
+<section class="cartao">
+  <h2>Importar</h2>
+  <p>Envie um arquivo gerado pelo Exportar de outro Djornal. Cada conteúdo é reconhecido pelo endereço (slug).</p>
+  <form method="post" enctype="multipart/form-data" class="importar">
+    <input type="hidden" name="_token" value="{{ Session.token: }}">
+    <input type="file" name="arquivo" accept=".json,application/json" required>
+    <fieldset>
+      <legend>Se já existir um conteúdo com o mesmo endereço</legend>
+      <label class="check"><input type="radio" name="modo" value="pular" checked> Manter o daqui (pular)</label>
+      <label class="check"><input type="radio" name="modo" value="substituir"> Substituir pelo do arquivo</label>
+    </fieldset>
+    <label class="check"><input type="checkbox" name="simular" checked> Só simular (mostra o que aconteceria, sem gravar)</label>
+    <button class="btn">Importar</button>
+  </form>
+  <p><small>Até 10 MB por arquivo. Faça um backup de <code>_dados/</code> antes de substituir.</small></p>
+</section>
+{% include:"admin/_rodape.djo.html" %}

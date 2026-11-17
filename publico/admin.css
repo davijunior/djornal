@@ -24,3 +24,4 @@ small{color:var(--mudo)}
 .dlg-imagem{max-width:760px;width:calc(100% - 32px);border:1px solid var(--linha);border-radius:12px;background:var(--cartao);color:var(--fg)}.dlg-imagem::backdrop{background:rgba(0,0,0,.5)}
 .dlg-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dlg-envio{display:flex;gap:8px;flex-wrap:wrap}.dlg-envio input{flex:1 1 200px}
 .galeria{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));max-height:50vh;overflow:auto}.galeria button{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer}.galeria button:hover,.galeria button:focus{border-color:var(--acento)}.galeria img{height:100px}
+.adm .cartao{padding:20px 0}.adm .cartao h2{margin-bottom:8px}.importar{display:grid;gap:12px;max-width:560px}.importar fieldset{border:1px solid var(--linha);border-radius:8px;padding:8px 12px;display:grid;gap:6px}.relatorio ul{margin:.4rem 0}.relatorio code{word-break:break-all}

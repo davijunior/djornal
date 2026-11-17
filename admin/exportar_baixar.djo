@@ -1,0 +1,7 @@
+// GET /admin/exportar/baixar: baixa a exportação em JSON (posts, páginas, tags e lista de mídia).
+abrir:
+exigir_admin:
+var com_rascunhos = (Http.query:"rascunhos" ?? "") == "1"
+Http.setheader:"Content-Disposition":("attachment; filename=\"djornal-" + (Time.format:(agora:):"YYYY-MM-DD") + ".json\"")
+Http.setheader:"Cache-Control":"no-store"
+Http.json:(exportar_conteudo:com_rascunhos)

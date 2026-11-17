@@ -132,6 +132,41 @@ t "ask.djo não é servido" "404" "$(code $B/ask.djo)"
 t "/ask fora do manifesto" "0" "$(curl -s $B/.well-known/ai-manifest.json | grep -c '"/ask')"
 t "slug 'ask' é reservado" "reservado" "$(curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"x","slug":"ask"}}')"
 
+echo "-- exportar e importar"
+t "página exportar no painel" "Exportar e importar" "$(curl -s -b $J $B/admin/exportar)"
+t "exportar exige login" "302" "$(code $B/admin/exportar/baixar)"
+curl -s -b $J -D "$TMP/exp.h" "$B/admin/exportar/baixar?rascunhos=1" -o "$TMP/exp.json"
+t "exportar baixa um arquivo" "attachment" "$(cat "$TMP/exp.h")"
+t "exportação traz texto e tags" 'Para agentes de IA' "$(cat "$TMP/exp.json")"
+t "exportação com rascunhos" '"rascunho-do-ask"' "$(cat "$TMP/exp.json")"
+t "exportação sem rascunhos" "0" "$(curl -s -b $J "$B/admin/exportar/baixar" | grep -c 'rascunho-do-ask')"
+t "exportação não leva tokens nem senhas" "0" "$(grep -c 'cms_\|senha\|hash' "$TMP/exp.json")"
+IMP() { curl -s -b $J $B/admin/exportar -F "_token=$CSRF" "$@"; }
+t "reimportar no mesmo site pula tudo" "0</strong> criados" "$(IMP -F arquivo=@"$TMP/exp.json" -F modo=pular)"
+t "simular substituir não grava" "seriam substituídos" "$(IMP -F arquivo=@"$TMP/exp.json" -F modo=substituir -F simular=on)"
+cat > "$TMP/novo.json" <<'JSON'
+{"djornal": 1, "conteudos": [
+ {"tipo": "post", "titulo": "Veio de outro site", "slug": "veio-de-outro-site", "texto": "Oi ![foto](/uploads/2020-01/nao-existe.png)", "status": "published", "publicar_em": "2024-05-01 10:00:00", "tags": ["importado"], "criado": "2024-04-30 09:00:00"},
+ {"tipo": "post", "titulo": "", "slug": "sem-titulo-imp"},
+ "lixo"],
+ "midias": [{"arquivo": "../_dados/cms.db"}, {"arquivo": "uploads/2020-01/nao-existe.png"}]}
+JSON
+R=$(IMP -F arquivo=@"$TMP/novo.json")
+t "importar cria o post novo" "1</strong> criados" "$R"
+t "importar relata erros por item" "2</strong> com erro" "$R"
+t "importar lista mídia que falta" "uploads/2020-01/nao-existe.png" "$R"
+t "importar ignora caminho fora de uploads" "0" "$(echo "$R" | grep -c 'cms.db')"
+t "post importado está no ar com data original" "2024" "$(curl -s -H 'Accept: application/json' $B/blog/veio-de-outro-site)"
+t "post importado mantém a tag" "importado" "$(curl -s -H 'Accept: application/json' $B/blog/veio-de-outro-site)"
+sed -i 's/Oi !/Mudado !/' "$TMP/novo.json"
+t "importar substituir regrava" "1</strong> substituídos" "$(IMP -F arquivo=@"$TMP/novo.json" -F modo=substituir)"
+t "substituído tem o texto novo" "Mudado" "$(curl -s -H "$H" -H 'Accept: application/json' $B/blog/veio-de-outro-site)"
+echo '{"x": 1}' > "$TMP/ruim.json"; echo 'nao é json' > "$TMP/ruim2.json"
+t "importar recusa JSON de outra coisa" "não é uma exportação" "$(IMP -F arquivo=@"$TMP/ruim.json")"
+t "importar recusa arquivo inválido" "não é um JSON válido" "$(IMP -F arquivo=@"$TMP/ruim2.json")"
+t "importar sem CSRF é recusado" "0" "$(curl -s -b $J $B/admin/exportar -F arquivo=@"$TMP/novo.json" | grep -c 'criados')"
+t "importar não deixa o arquivo para trás" "0" "$(ls _dados/importar 2>/dev/null | wc -l)"
+
 echo "-- segurança"
 curl -s -XPOST $B/api/conteudo -H "$H" -H "$CT" -d '{"conteudo":{"titulo":"xss","texto":"[a](javascript:alert(1)) <img src=x onerror=alert(1)>","status":"published"}}' >/dev/null
 t "javascript: vira #" 'href="#"' "$(curl -s $B/blog/xss)"
